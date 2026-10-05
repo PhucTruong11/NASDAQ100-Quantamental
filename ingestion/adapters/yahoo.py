@@ -26,7 +26,7 @@ class YahooAdapter:
         # 2. Lấy dữ liệu dạng Pandas DataFrame (Nhớ: auto_adjust=False)
         pdf = stock.history(start=start_date, auto_adjust=False)
         if pdf.empty:
-            return pl.DataFrame
+            return pl.DataFrame()
         # 3. Kéo cột Date (đang làm index ẩn) ra ngoài thành 1 cột bình thường
         pdf = pdf.reset_index()
         # 4. Dùng lệnh pl.from_pandas() để hô biến nó thành POLARS DataFrame!
