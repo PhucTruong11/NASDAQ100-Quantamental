@@ -36,15 +36,15 @@ def main():
             
         logger.info(f"Đang xử lý {ticker} (CIK: {cik})...")
         try:
-            # Lấy dữ liệu Giá (Price)
-            yahoo.run(ticker)
+            yahoo_success = yahoo.run(ticker)
+            edgar_success = edgar.run(cik)
             
-            # Lấy dữ liệu Báo cáo Tài chính (Fundamentals)
-            edgar.run(cik)
-            
-            # Ghi nhận thành công
-            watermark.set_watermark(ticker)
-            
+            # Chỉ set watermark nếu cả 2 đều thành công
+            if yahoo_success and edgar_success:
+                watermark.set_watermark(ticker)
+                logger.info(f"Đã đánh dấu watermark thành công cho {ticker}")
+            else:
+                logger.warning(f"Bỏ qua set watermark cho {ticker} do một trong các API thất bại hoặc rỗng.")
             # Tôn trọng rate limit của SEC
             time.sleep(0.2) 
         except Exception as e:

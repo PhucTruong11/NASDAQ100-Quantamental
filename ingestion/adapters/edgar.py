@@ -123,12 +123,14 @@ class EdgarAdapter:
             df = self.parse_facts(raw_data, cik)
             if df.is_empty():
                 logger.warning(f"Không tìm thấy dữ liệu nào cho CIK {cik}")
-                return None
+                return False
             out_path = self.save_to_parquet(df,cik)
             logger.info(f"Hoàn thành CIK {cik}. Đã lưu tại: {out_path} (Số dòng/cột: {df.shape})")
+            return True
         except Exception as e:
             logger.error(f"Lỗi khi xử lý CIK {cik}: {str(e)}")
-
+            return False
+            
 if __name__ == "__main__":
     adapter = EdgarAdapter(user_agent="truongtrongphuc584@gmail.com")
     adapter.run("320193") # 320193 là Apple

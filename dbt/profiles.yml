@@ -1,4 +1,4 @@
-quantamental:
+nasdaq_quantamental:
   target: dev
   outputs:
     dev:

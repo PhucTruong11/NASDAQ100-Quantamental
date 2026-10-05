@@ -54,12 +54,14 @@ class YahooAdapter:
             
             if df.is_empty():
                 logger.warning(f"Không lấy được giá cho {ticker}")
-                return
+                return False
                 
             out_path = self.save_to_parquet(df, ticker)
             logger.info(f"Hoàn thành {ticker}. Đã lưu tại: {out_path} (Shape: {df.shape})")
+            return True
         except Exception as e:
             logger.error(f"Lỗi khi xử lý {ticker}: {str(e)}")
+            return False
 
 if __name__ == "__main__":
     adapter = YahooAdapter()
