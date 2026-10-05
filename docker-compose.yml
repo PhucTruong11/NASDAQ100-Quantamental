@@ -1,0 +1,62 @@
+# ============================================================
+# docker-compose.yml — Airflow LocalExecutor (Section 14)
+# ============================================================
+# Chạy: docker compose up
+# RAM ước tính: ~2–3 GB (LocalExecutor, không có Redis/Celery/Flower)
+#
+# TODO Phase 1:
+#   - Điền image version Airflow
+#   - Mount volume warehouse.duckdb và data/raw/
+#   - Cấu hình LocalExecutor
+
+version: "3.8"
+
+x-airflow-env: &airflow-env
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.3
+  environment: *airflow-env
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./ingestion:/opt/airflow/ingestion
+    - ./dbt:/opt/airflow/dbt
+    - ./data/raw:/opt/airflow/data/raw
+    - ./warehouse.duckdb:/opt/airflow/warehouse.duckdb
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+
+  airflow-init:
+    <<: *airflow-common
+    command: version
+    environment:
+      <<: *airflow-env
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin

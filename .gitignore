@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# DuckDB (không commit file warehouse)
+warehouse.duckdb
+warehouse.duckdb.wal
+*.duckdb.lock
+
+# Parquet raw data (thường lớn, không commit)
+data/raw/
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/.user.yml
+
+# Airflow
+logs/
+airflow.db
+airflow.cfg
+standalone_admin_password.txt
+
+# Env & secrets
+.env
+*.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,32 @@
+name: 'nasdaq_quantamental'
+version: '1.0.0'
+config-version: 2
+
+profile: 'nasdaq_quantamental'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  nasdaq_quantamental:
+    # Cấu hình materialize mặc định cho từng layer (Section 4)
+    bronze:
+      +materialized: table
+    staging:
+      +materialized: view
+    silver:
+      +materialized: table
+    intermediate:
+      +materialized: view
+    gold:
+      +materialized: table
+    marts:
+      +materialized: table
