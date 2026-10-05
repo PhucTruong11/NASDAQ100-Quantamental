@@ -3,6 +3,7 @@ import time
 from universe import NasdaqUniverse
 from adapters.edgar import EdgarAdapter
 from adapters.yahoo import YahooAdapter
+from watermark import WatermarkManager
 
 # Cấu hình logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,12 +23,17 @@ def main():
     cik_list = df_nasdaq["CIK"].to_list()
     ticker_list = df_nasdaq["Ticker"].to_list()
     
-    # 2. Khởi tạo các Adapters
+    # 2. Khởi tạo các Adapters và Watermark
     edgar = EdgarAdapter(user_agent="truongtrongphuc584@gmail.com")
     yahoo = YahooAdapter()
+    watermark = WatermarkManager()
     
     # 3. Vòng lặp tải dữ liệu
     for ticker, cik in zip(ticker_list, cik_list):
+        if watermark.is_updated_today(ticker):
+            logger.info(f"Bỏ qua {ticker} (CIK: {cik}) vì đã được cập nhật hôm nay.")
+            continue
+            
         logger.info(f"Đang xử lý {ticker} (CIK: {cik})...")
         try:
             # Lấy dữ liệu Giá (Price)
@@ -35,6 +41,9 @@ def main():
             
             # Lấy dữ liệu Báo cáo Tài chính (Fundamentals)
             edgar.run(cik)
+            
+            # Ghi nhận thành công
+            watermark.set_watermark(ticker)
             
             # Tôn trọng rate limit của SEC
             time.sleep(0.2) 

@@ -2,6 +2,7 @@ import logging
 import yfinance as yf
 import polars as pl
 from pathlib import Path
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Cấu hình logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -20,6 +21,7 @@ class YahooAdapter:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def fetch_historical_prices(self, ticker: str, start_date: str = "2010-01-01") -> pl.DataFrame:
         # 1. Tạo object cổ phiếu
         stock = yf.Ticker(ticker)

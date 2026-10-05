@@ -1,6 +1,5 @@
 import logging
 import requests
-from bs4 import BeautifulSoup
 import polars as pl
 from typing import List, Dict
 
@@ -11,19 +10,8 @@ class NasdaqUniverse:
     Class để quản lý danh sách các công ty trong rổ NASDAQ-100 (Universe).
     """
     
-    # Danh sách FULL 100 mã cổ phiếu trong NASDAQ-100 (cập nhật mới nhất)
-    TICKERS = [
-        "AAPL", "ABNB", "ADBE", "ADI", "ADP", "ADSK", "ALAB", "ALNY", "AMAT", "AMD", 
-        "AMGN", "AMZN", "APP", "ARM", "ASML", "AVGO", "AXON", "BKR", "BKNG", "CDNS", 
-        "CCEP", "CSCO", "CTAS", "COST", "CPRT", "DDOG", "DXCM", "EA", "EBAY", "ENPH", 
-        "EXC", "EXPE", "FAST", "FTNT", "GEHC", "GILD", "GOOG", "GOOGL", "HON", "IDXX", 
-        "ILMN", "INTC", "INTU", "ISRG", "KDP", "KHC", "KLAC", "LRCX", "LULU", "MAR", 
-        "MDB", "MCHP", "MDLZ", "MELI", "META", "MNST", "MRVL", "MSFT", "MU", "NFLX", 
-        "NVDA", "NXPI", "ODFL", "ON", "ORLY", "PANW", "PAYX", "PCAR", "PDD", "PEP", 
-        "PYPL", "QCOM", "REGN", "ROP", "RVLV", "SBUX", "SIRI", "SNPS", "SPLK", "STX", 
-        "TEAM", "TMUS", "TSLA", "TTWO", "TXN", "VEEV", "VRSK", "VRTX", "WBA", "WBD", 
-        "WDAY", "WMT", "XEL", "ZS"
-    ]
+    # Đường dẫn file CSV chứa danh sách mã cổ phiếu trong NASDAQ-100 được update tự động hàng ngày
+    NASDAQ_100_CSV_URL = "https://yfiua.github.io/index-constituents/constituents-nasdaq100.csv"
     
     SEC_TICKER_URL = "https://www.sec.gov/files/company_tickers.json"
     
@@ -44,10 +32,14 @@ class NasdaqUniverse:
         # SEC trả về dict dạng {'0': {'cik_str': 320193, 'ticker': 'AAPL', 'title': 'Apple Inc.'}, ...}
         sec_data = response.json()
         
+        # Lấy danh sách TICKERS hiện tại trên thị trường
+        nasdaq_df = pl.read_csv(self.NASDAQ_100_CSV_URL)
+        live_tickers = nasdaq_df["Symbol"].to_list()
+        
         extracted_data = []
         for key, info in sec_data.items():
-            # Chỉ lọc ra những mã nằm trong danh sách TICKERS của chúng ta
-            if info["ticker"] in self.TICKERS:
+            # Chỉ lọc ra những mã nằm trong danh sách live_tickers
+            if info["ticker"] in live_tickers:
                 extracted_data.append({
                     "Company": info["title"],
                     "Ticker": info["ticker"],

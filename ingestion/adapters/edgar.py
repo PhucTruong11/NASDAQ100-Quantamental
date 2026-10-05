@@ -4,10 +4,22 @@ import polars as pl
 from pathlib import Path
 from pydantic import BaseModel, ValidationError
 from typing import List, Optional
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Cấu hình logging cơ bản
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+class EdgarFact(BaseModel):
+    cik: str
+    tag: str
+    value: float
+    unit: str
+    form: str
+    fy: Optional[int] = None
+    fp: Optional[str] = None
+    filing_date: str
+
 
 class EdgarAdapter:
     """
@@ -42,6 +54,7 @@ class EdgarAdapter:
             "CommonStockSharesOutstanding" # Số lượng cổ phiếu lưu hành
         ]
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def fetch_company_facts(self, cik: str) -> dict:
         # 1. Pad mã CIK cho đủ 10 số bằng hàm zfill của Python
         cik_padded = str(cik).zfill(10)
@@ -69,16 +82,22 @@ class EdgarAdapter:
                     for fact in facts:
                         # Chỉ lấy báo cáo năm (10-K) và báo cáo quý (10-Q)
                         if fact.get("form") in ["10-K", "10-Q"]:
-                            extracted_data.append({
-                                "cik": cik,
-                                "tag": tag,
-                                "value": fact.get("val"),
-                                "unit": unit_name,
-                                "form": fact.get("form"),
-                                "fy": fact.get("fy"), # fiscal year (năm tài chính)
-                                "fp": fact.get("fp"), # fiscal period (kỳ tài chính)
-                                "filing_date": fact.get("filed")
-                            })
+                            try:
+                                # Validate bằng Pydantic
+                                validated_fact = EdgarFact(
+                                    cik=cik,
+                                    tag=tag,
+                                    value=fact.get("val"),
+                                    unit=unit_name,
+                                    form=fact.get("form"),
+                                    fy=fact.get("fy"),
+                                    fp=fact.get("fp"),
+                                    filing_date=fact.get("filed")
+                                )
+                                extracted_data.append(validated_fact.model_dump())
+                            except ValidationError as e:
+                                logger.debug(f"Bỏ qua dữ liệu không hợp lệ của {cik} - {tag}: {e}")
+                                continue
         # 1. Tạo DataFrame từ list of dicts. Tốc độ ngang ngửa Pandas.  
         df = pl.DataFrame(extracted_data)
         
