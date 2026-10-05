@@ -24,7 +24,7 @@ x-airflow-common: &airflow-common
     - ./ingestion:/opt/airflow/ingestion
     - ./dbt:/opt/airflow/dbt
     - ./data/raw:/opt/airflow/data/raw
-    - ./data/warehouse.duckdb:/opt/airflow/warehouse.duckdb
+    - ./data/warehouse.duckdb:/opt/airflow/data/warehouse.duckdb
   depends_on:
     postgres:
       condition: service_healthy
