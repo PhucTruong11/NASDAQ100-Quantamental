@@ -5,7 +5,7 @@
 ```mermaid
 graph TD
     subgraph SRC[Nguồn dữ liệu]
-        A1[SEC EDGAR API<br/>companyfacts, submissions]
+        A1[SEC EDGAR API<br/>companyfacts - filing_date lấy từ field filed trong response]
         A2[Price API<br/>yfinance / Finnhub]
     end
 
@@ -23,7 +23,6 @@ graph TD
     subgraph BRONZE[dbt Bronze - chỉ typing]
         D1[bronze_price_eod]
         D2[bronze_company_facts]
-        D3[bronze_submissions]
         D4[bronze_index_membership]
     end
 
@@ -77,7 +76,6 @@ graph TD
 
     C1 --> D1
     C2 --> D2
-    C2 --> D3
     C3 --> D4
 
     D1 --> E1
@@ -127,7 +125,7 @@ graph TD
 ## 2. Giải thích từng giai đoạn
 
 | Giai đoạn | Input | Output | Việc chính |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Ingestion (E+L) | EDGAR, price API | Parquet raw | Fetch thô, validate schema (Pydantic), kiểm watermark để không ingest trùng |
 | Bronze | Parquet raw | `bronze_*` | Load vào DuckDB, chỉ ép kiểu dữ liệu, không sửa logic |
 | Staging | `bronze_*` | `stg_*` | Đổi tên cột, lọc field cần dùng, chuẩn hoá định dạng |
@@ -140,7 +138,7 @@ graph TD
 ## 3. Airflow điều phối theo giai đoạn nào
 
 | DAG | Giai đoạn phụ trách |
-|---|---|
+| --- | --- |
 | `universe_membership_dag` | Ingestion → Bronze → Silver cho `silver_universe_membership` |
 | `price_eod_dag` | Ingestion → Bronze → Silver cho `silver_price_adjusted` |
 | `fundamentals_dag` | Ingestion → Bronze → Silver cho `silver_fundamentals_pit` |
@@ -167,13 +165,14 @@ graph TD
     H --> I[Update ingestion_watermark]
     I --> J[Kết thúc - idempotent nếu chạy lại]
 ```
+
 *Chạy lại job này nhiều lần trong ngày không tạo dữ liệu trùng, nhờ watermark chặn ngay từ đầu.*
 
 ### 4.2 Point-in-time fundamentals join
 
 ```mermaid
 graph TD
-    A[silver_fundamentals_pit] --> B[Lấy filing_date từ EDGAR submissions<br/>không dùng period_end_date]
+    A[silver_fundamentals_pit] --> B[Lấy filing_date từ field filed trong companyfacts<br/>không dùng period_end_date]
     B --> C{Có 10-K/A điều chỉnh sau đó?}
     C -- Có --> D[Giữ số liệu TẠI filing_date gốc]
     C -- Không --> E[Dùng số liệu filing gốc]

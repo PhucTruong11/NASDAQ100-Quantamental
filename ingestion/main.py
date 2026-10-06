@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 def main():
     # 1. Khởi tạo danh sách công ty (Universe)
     universe = NasdaqUniverse(user_agent="truongtrongphuc584@gmail.com")
-    df_nasdaq = universe.get_constituents()
+    df_nasdaq = universe.run()
     
-    if df_nasdaq.is_empty():
-        logger.error("Không lấy được danh sách công ty.")
+    if df_nasdaq is None or df_nasdaq.is_empty():
+        logger.error("Không lấy được danh sách công ty. Dừng tiến trình!")
         return
         
-    logger.info(f"Đã lấy thành công {df_nasdaq.height} công ty từ SEC. Bắt đầu tải dữ liệu...")
+    logger.info(f"Đã lấy thành công {df_nasdaq.height} công ty từ SEC và ghi ra parquet. Bắt đầu tải dữ liệu...")
     
     cik_list = df_nasdaq["CIK"].to_list()
     ticker_list = df_nasdaq["Ticker"].to_list()
