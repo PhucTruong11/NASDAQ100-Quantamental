@@ -1,3 +1,3 @@
-{%% macro safe_cast(column_name, type) %}
-    try_cast({{ column }}) as ({{type}})
+{% macro safe_cast(column_name, type) %}
+    try_cast({{ column_name }} as {{ type }})
 {% endmacro %}

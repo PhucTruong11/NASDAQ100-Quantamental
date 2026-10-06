@@ -2,22 +2,21 @@ version: 2
 
 models:
   - name: bronze_price_eod
-    colums:
+    columns:
       - name: "Ticker"
         tests: [not_null]
       - name: "Date"
         tests: [not_null]
 
   - name: bronze_company_facts
-    colums:
+    columns:
       - name: "cik"
         tests: [not_null]
       - name: filing_date
         tests: [not_null]
   - name: bronze_index_membership
-    colums:
+    columns:
       - name: "Ticker"
         tests: [not_null]
       - name: "CIK"
         tests: [not_null]
-        
