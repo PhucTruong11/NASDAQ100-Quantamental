@@ -8,4 +8,4 @@ SELECT
     {{ safe_cast('"fy"', 'integer')}} as fy,
     {{ safe_cast('"fp"', 'varchar')}} as fp,
     {{ safe_cast('"filing_date"', 'date')}} as filing_date
-FROM read_parquet('{{ var("raw_edgar_glob", "../data/raw/edgar/edgar_*.parquet") }}')
+FROM {{ source('raw', 'edgar') }}

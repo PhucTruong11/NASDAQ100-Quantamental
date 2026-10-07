@@ -20,13 +20,7 @@ models:
     # Cấu hình materialize mặc định cho từng layer (Section 4)
     bronze:
       +materialized: table
-    staging:
-      +materialized: view
     silver:
       +materialized: table
-    intermediate:
-      +materialized: view
     gold:
-      +materialized: table
-    marts:
       +materialized: table

@@ -10,4 +10,4 @@ SELECT
     {{ safe_cast('"Dividends"', 'double') }}    as "Dividends",
     {{ safe_cast('"Stock Splits"', 'double') }} as "Stock Splits",
     {{ clean_string('"Ticker"') }}              as "Ticker"
-FROM read_parquet('{{ var("raw_price_glob", "../data/raw/prices/price_*.parquet") }}')
+FROM {{ source('raw', 'prices') }}

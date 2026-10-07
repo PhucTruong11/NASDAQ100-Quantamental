@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: raw
+    description: "Lớp dữ liệu thô (Raw Parquet Files) nằm trong data/raw"
+    tables:
+      - name: universe
+        description: "Danh sách hiện tại của Nasdaq-100"
+        meta:
+          # Chỉ đích danh file universe
+          external_location: "../data/raw/universe/universe.parquet"
+
+      - name: edgar
+        description: "Dữ liệu Báo cáo tài chính (SEC)"
+        meta:
+          # DuckDB hỗ trợ Glob Pattern: Đọc gộp TẤT CẢ các file edgar_*.parquet cùng lúc!
+          external_location: "../data/raw/edgar/*.parquet"
+
+      - name: prices
+        description: "Dữ liệu lịch sử Giá (Yahoo)"
+        meta:
+          external_location: "../data/raw/prices/*.parquet"
