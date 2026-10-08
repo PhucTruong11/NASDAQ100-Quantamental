@@ -3,6 +3,7 @@ import time
 from universe import NasdaqUniverse
 from adapters.edgar import EdgarAdapter
 from adapters.yahoo import YahooAdapter
+from adapters.sector import SectorAdapter
 from watermark import WatermarkManager
 
 # Cấu hình logging
@@ -50,6 +51,13 @@ def main():
         except Exception as e:
             logger.error(f"Lỗi khi lấy dữ liệu cho {ticker}: {str(e)}")
             continue
+
+    # 4. Sector (GICS-style): 1 file duy nhất, ghi đè mỗi lần chạy, không cần watermark
+    sector = SectorAdapter()
+    if sector.run(ticker_list):
+        logger.info("Đã cập nhật sector.parquet thành công.")
+    else:
+        logger.warning("Cập nhật sector không hoàn tất (xem log phía trên).")
 
 if __name__ == "__main__":
     main()

@@ -12,7 +12,10 @@ models:
         tests: [not_null]
       - name: filing_date
         tests: [not_null]
+      - name: period_end_date
+        tests: [not_null]
       - name: filing_type
         tests:
           - accepted_values:
-              values: ["10-K", "10-Q"]
+              arguments:
+                values: ["10-K", "10-Q"]

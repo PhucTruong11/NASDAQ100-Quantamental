@@ -1,6 +1,7 @@
 import logging
 import requests
 import polars as pl
+from datetime import date
 from pathlib import Path
 from pydantic import BaseModel, ValidationError
 from typing import List, Optional
@@ -18,6 +19,8 @@ class EdgarFact(BaseModel):
     form: str
     fy: Optional[int] = None
     fp: Optional[str] = None
+    period_start: Optional[date] = None  # None với fact dạng instant (bảng cân đối kế toán)
+    period_end: date                     # luôn có — khóa dedup chính ở Silver
     filing_date: str
 
 
@@ -92,6 +95,8 @@ class EdgarAdapter:
                                     form=fact.get("form"),
                                     fy=fact.get("fy"),
                                     fp=fact.get("fp"),
+                                    period_start=fact.get("start"),
+                                    period_end=fact.get("end"),
                                     filing_date=fact.get("filed")
                                 )
                                 extracted_data.append(validated_fact.model_dump())
@@ -99,7 +104,13 @@ class EdgarAdapter:
                                 logger.debug(f"Bỏ qua dữ liệu không hợp lệ của {cik} - {tag}: {e}")
                                 continue
         # 1. Tạo DataFrame từ list of dicts. Tốc độ ngang ngửa Pandas.  
-        df = pl.DataFrame(extracted_data)
+        # infer_schema_length=None + schema_overrides: nhiều fact instant đứng đầu có period_start=None,
+        # nếu để Polars tự đoán trên 100 dòng đầu thì cột sẽ bị hiểu nhầm là kiểu Null.
+        df = pl.DataFrame(
+            extracted_data,
+            infer_schema_length=None,
+            schema_overrides={"period_start": pl.Date, "period_end": pl.Date},
+        )
         
         # 2. Xử lý Dataframe
         # pl.col() đại diện cho 1 cột. Ở đây ta cast (ép kiểu) filing_date thành Datetime và value thành Float64

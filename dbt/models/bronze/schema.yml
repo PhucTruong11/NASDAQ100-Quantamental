@@ -14,6 +14,8 @@ models:
         tests: [not_null]
       - name: filing_date
         tests: [not_null]
+      - name: period_end
+        tests: [not_null]
   - name: bronze_index_membership
     columns:
       - name: "Ticker"

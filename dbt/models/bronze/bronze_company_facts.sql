@@ -7,5 +7,7 @@ SELECT
     {{ safe_cast('"form"', 'varchar')}} as form,
     {{ safe_cast('"fy"', 'integer')}} as fy,
     {{ safe_cast('"fp"', 'varchar')}} as fp,
+    {{ safe_cast('"period_start"', 'date')}} as period_start,
+    {{ safe_cast('"period_end"', 'date')}} as period_end,
     {{ safe_cast('"filing_date"', 'date')}} as filing_date
 FROM {{ source('raw', 'edgar') }}
