@@ -6,7 +6,8 @@
       target_schema='main',
       unique_key='Ticker',
       strategy='check',
-      check_cols='all'
+      check_cols='all',
+      invalidate_hard_deletes=True
     )
 }}
 

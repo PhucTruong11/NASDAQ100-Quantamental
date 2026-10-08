@@ -1,0 +1,18 @@
+version: 2
+models:
+  - name: stg_price_eod
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: trade_date
+        tests: [not_null]
+  - name: stg_fundamentals
+    columns:
+      - name: cik
+        tests: [not_null]
+      - name: filing_date
+        tests: [not_null]
+      - name: filing_type
+        tests:
+          - accepted_values:
+              values: ["10-K", "10-Q"]

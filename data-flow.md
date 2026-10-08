@@ -26,11 +26,9 @@ graph TD
         D4[bronze_index_membership]
     end
 
-    subgraph STG[dbt Staging - rename, cast, filter]
+    subgraph STG[dbt Staging - rename, loc du lieu rac]
         E1[stg_price_eod]
         E2[stg_fundamentals]
-        E3[stg_dividends]
-        E4[stg_universe]
     end
 
     subgraph SILVER[dbt Silver - dedupe, SCD2, PIT]
@@ -80,13 +78,10 @@ graph TD
 
     D1 --> E1
     D2 --> E2
-    D2 --> E3
-    D4 --> E4
+    D4 --> F1
 
     E1 --> F2
     E2 --> F3
-    E3 --> F2
-    E4 --> F1
 
     F1 --> G1
     F1 --> G2
