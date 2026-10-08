@@ -167,13 +167,12 @@ graph TD
 
 ```mermaid
 graph TD
-    A[silver_fundamentals_pit] --> B[Lấy filing_date từ field filed trong companyfacts<br/>không dùng period_end_date]
-    B --> C{Có 10-K/A điều chỉnh sau đó?}
-    C -- Có --> D[Giữ số liệu TẠI filing_date gốc]
-    C -- Không --> E[Dùng số liệu filing gốc]
-    D --> F[Join với giá tại thời điểm t<br/>chỉ dùng fundamentals có filing_date <= t]
-    E --> F
-    F --> G[Sẵn sàng cho backtest, không look-ahead]
+    A[silver_fundamentals_pit] --> B["Dedup theo (cik, metric_tag, period_start, period_end, unit_of_measure)<br/>giữ filing_date SỚM NHẤT"]
+    B --> C{6 CIK không có 10-K/10-Q?<br/>ASML, ARM, PDD, CCEP, TRI, Ferrovial}
+    C -- Có --> D[Không có dòng nào trong bảng<br/>Gold: NULL cho Value/Growth/Quality pillar]
+    C -- Không --> E[Join với giá tại thời điểm t<br/>chỉ dùng fundamentals có filing_date <= t]
+    D --> F["composite_score = NULL<br/>loại khỏi backtest/screener, vẫn giữ trong universe"]
+    E --> G[Sẵn sàng cho backtest, không look-ahead]
 ```
 
 ### 4.3 Universe membership (SCD2) & truy vấn point-in-time
@@ -193,15 +192,18 @@ graph TD
 ```mermaid
 graph TD
     A[int_* ratio factors] --> B[Winsorize outlier từng factor]
-    B --> C[Z-score trung hoà theo GICS sector]
-    C --> D{Check tương quan chéo<br/>giữa factor - VIF}
-    D -- Cao --> E[Orthogonalize / loại bớt factor trùng]
-    D -- OK --> F[Gộp thành pillar<br/>Growth / Value / Momentum / Quality]
+    B --> C{Sector có n >= 5 mã<br/>không NULL cho factor đó?}
+    C -- Có --> D[Z-score trong sector]
+    C -- Không --> E[Z-score toàn universe - fallback]
+    D --> F{Check tương quan chéo<br/>giữa factor - VIF}
     E --> F
-    F --> G{Weighting scheme<br/>chốt trước khi code}
-    G -- Equal weight --> H[gold_composite_score]
-    G -- IC-weighted --> H
-    G -- PCA --> H
+    F -- Cao --> G[Orthogonalize / loại bớt factor trùng]
+    F -- OK --> H[Gộp thành pillar<br/>Growth / Value / Momentum / Quality]
+    G --> H
+    H --> I["composite_score = 0.25×mỗi pillar<br/>(equal-weight, đã chốt)"]
+    I --> J{Thiếu pillar nào?<br/>vd 6 mã FPI không có 10-K/10-Q}
+    J -- Thiếu --> K[composite_score = NULL<br/>loại khỏi backtest/screener]
+    J -- Đủ cả 4 --> L[composite_score hợp lệ]
 ```
 
 ### 4.5 Backtest

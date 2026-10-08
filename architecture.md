@@ -22,7 +22,7 @@ graph LR
 ## 2. Tech stack chi tiết
 
 | Layer | Công cụ | Vai trò |
-|---|---|---|
+| --- | --- | --- |
 | Fundamentals | SEC EDGAR API (companyfacts, submissions) | Dữ liệu tài chính point-in-time, miễn phí |
 | Giá | yfinance hoặc Finnhub (adapter pattern, dễ đổi nguồn) | Giá EOD, cổ tức, chia tách |
 | Ingestion | Python + Polars + Pydantic | Parse, validate schema, retry/backoff, rate limit |
@@ -39,31 +39,26 @@ graph LR
 
 - Universe NASDAQ-100 point-in-time (dbt snapshot) — không dùng danh sách hiện tại áp cho quá khứ.
 - Identifier mapping qua CIK — xử lý đổi ticker, multi-class, spin-off.
-- Fundamentals gắn theo **filing date** của EDGAR, không theo kỳ báo cáo.
+- Fundamentals gắn theo **filing date** của EDGAR, không theo kỳ báo cáo. Dedup theo `(cik, metric_tag, period_start, period_end, unit_of_measure)` — giữ filing **sớm nhất** (không dùng `fiscal_year`/`fiscal_period` làm khoá vì 1 filing có thể chứa nhiều giá trị cùng tag khác kỳ thực tế — quý hiện tại, lũy kế, cùng kỳ năm trước).
 - Factor set thay cho B/M và QMJ thuần: Momentum (12M-1M), Growth (Rule of 40), FCF yield, EV/Sales, SBC/Revenue, Earnings surprise.
-- Z-score trung hoà theo GICS sector, có winsorize.
+- `silver_price_adjusted` chỉ áp hệ số **cổ tức** — Yahoo `Close` đã tự động điều chỉnh split sẵn (kể cả khi `auto_adjust=False`), áp lại hệ số split sẽ bị nhân đôi điều chỉnh. `split_ratio` giữ lại chỉ để tham chiếu.
+- Z-score trung hoà theo GICS sector, có winsorize. Sector có `n >= 5` mã không NULL mới tính riêng; dưới ngưỡng thì fallback z-score toàn universe (áp dụng cho Utilities n=4, Energy n=2, Basic Materials/Real Estate/Financial Services n=1 — tổng 9 mã).
 - Backtest: quintile portfolio, IC từng factor, turnover, chi phí giao dịch giả định, benchmark QQQ.
 - Lớp riêng cho NQ: index contribution, breadth, rolling beta/correlation, lịch báo cáo Mag7.
 
 ## 4. Schema theo medallion (dbt models chính)
 
-**Bronze** — 1:1 từ raw Parquet, chỉ typing
-`bronze_price_eod`, `bronze_company_facts`, `bronze_submissions`, `bronze_index_membership`
+**Bronze** — 1:1 từ raw Parquet, chỉ typing `bronze_price_eod`, `bronze_company_facts`, `bronze_submissions`, `bronze_index_membership`
 
-**Staging** — rename, cast, lọc field
-`stg_price_eod`, `stg_fundamentals`, `stg_dividends`, `stg_universe`
+**Staging** — rename, cast, lọc field `stg_price_eod`, `stg_fundamentals`, `stg_dividends`, `stg_universe`
 
-**Silver** — dedupe, SCD2, điều chỉnh corporate actions
-`silver_universe_membership` (snapshot SCD2), `silver_price_adjusted`, `silver_fundamentals_pit`
+**Silver** — dedupe, SCD2, điều chỉnh corporate actions `silver_universe_membership` (snapshot SCD2), `silver_price_adjusted`, `silver_fundamentals_pit`
 
-**Intermediate** — ratio, lag, z-score thô
-`int_momentum_ratio`, `int_growth_ratio`, `int_fcf_yield`, `int_sbc_ratio`, `int_earnings_surprise`, macro `zscore_sector_neutral`
+**Intermediate** — ratio, lag, z-score thô `int_momentum_ratio`, `int_growth_ratio`, `int_fcf_yield`, `int_sbc_ratio`, `int_earnings_surprise`, macro `zscore_sector_neutral`
 
-**Gold** — trụ cột tổng hợp
-`gold_growth_pillar`, `gold_value_pillar`, `gold_momentum_pillar`, `gold_quality_pillar`, `gold_composite_score`
+**Gold** — trụ cột tổng hợp `gold_growth_pillar`, `gold_value_pillar`, `gold_momentum_pillar`, `gold_quality_pillar`, `gold_composite_score`
 
-**OBT**
-`obt_web` (Streamlit), `obt_nq_contribution`, `obt_nq_breadth`
+**OBT** `obt_web` (Streamlit), `obt_nq_contribution`, `obt_nq_breadth`
 
 ## 5. Cấu trúc repo
 
@@ -88,10 +83,10 @@ nasdaq-quantamental/
 ## 6. Airflow DAGs (theo cadence)
 
 | DAG | Lịch | Việc chính |
-|---|---|---|
+| --- | --- | --- |
 | `universe_membership_dag` | Hàng tháng | Cập nhật danh sách NASDAQ-100, ghi snapshot |
 | `price_eod_dag` | Hàng ngày sau đóng cửa | Ingest giá, điều chỉnh corporate actions |
-| `fundamentals_dag` | Theo mùa BCTC (~quý) | Ingest EDGAR companyfacts, point-in-time |
+| `fundamentals_dag` | Theo mùa BCTC (\~quý) | Ingest EDGAR companyfacts, point-in-time |
 | `dbt_transform_dag` (Cosmos) | Sau khi ingest xong | Chạy toàn bộ model + test |
 | `backtest_dag` | Hàng tuần / on-demand | Tính IC, cập nhật kết quả backtest |
 
@@ -100,7 +95,7 @@ nasdaq-quantamental/
 ## 7. Roadmap 3 tháng (từ 04/10/2026)
 
 | Tháng | Trọng tâm |
-|---|---|
+| --- | --- |
 | 1 | Ingestion (EDGAR + price), raw Parquet, universe point-in-time, Airflow cơ bản |
 | 2 | dbt medallion đầy đủ, factor set mới, sector-neutral z-score, dbt tests + snapshots |
 | 3 | Backtest module, lớp phân tích NQ, Streamlit, dbt docs, README + Mermaid |
@@ -110,13 +105,14 @@ nasdaq-quantamental/
 - Dữ liệu giá free tier có thể thiếu mã đã hủy niêm yết → backtest còn survivorship bias nhẹ.
 - DuckDB single-writer → cần tuần tự hoá task ghi.
 - Phạm vi v1 chỉ NASDAQ-100; schema để sẵn cột `market`/`exchange` để mở rộng VN sau này.
+- 6 CIK là foreign private issuer, nộp 20-F/40-F/6-K thay vì 10-K/10-Q (ASML, ARM, PDD, CCEP, Thomson Reuters, Ferrovial) → không có fundamentals. Vẫn giữ trong `silver_universe_membership` (đúng thực tế thành viên index), nhưng `gold_composite_score` = NULL cho các mã này, loại khỏi backtest/screener — không reweighting lại trên các pillar còn lại.
 
 ## 9. Vai trò của Airflow
 
 Airflow chỉ điều phối, không tự xử lý dữ liệu.
 
 | Airflow điều phối | Airflow KHÔNG làm |
-|---|---|
+| --- | --- |
 | Gọi script ingestion theo lịch, retry khi lỗi | Không parse/transform — việc của Python và dbt |
 | Gọi `dbt run`/`dbt test` qua Cosmos, mỗi model = 1 task | Không thực thi SQL — DuckDB tính toán |
 | Đảm bảo thứ tự ingestion → bronze → ... → gold | Không phục vụ dashboard — Streamlit chạy app riêng, không nằm trong DAG |
@@ -132,6 +128,7 @@ Airflow chỉ điều phối, không tự xử lý dữ liệu.
 ## 11. ELT hay ETL
 
 Dự án là **ELT**, đúng với dbt + DuckDB:
+
 - **Extract + Load:** ingestion chỉ fetch thô từ EDGAR/price API, validate schema, ghi thẳng vào Parquet/bronze — không tính toán nghiệp vụ.
 - **Transform:** toàn bộ logic (ratio, z-score, point-in-time join, factor) nằm trong dbt, chạy sau khi dữ liệu đã vào DuckDB. dbt vốn là công cụ cho ELT.
 
@@ -142,7 +139,7 @@ Dự án là **ELT**, đúng với dbt + DuckDB:
 ## 13. Tổng kết toàn bộ quyết định
 
 | Hạng mục | Quyết định |
-|---|---|
+| --- | --- |
 | Thị trường | NASDAQ-100 trước, thiết kế market-agnostic để thêm VN sau (adapter) |
 | Mục đích | Portfolio data pipeline để xin intern, hoàn thành trong 3 tháng (từ 04/10/2026) |
 | Mô hình xử lý | ELT, batch (không streaming) |
@@ -157,23 +154,23 @@ Dự án là **ELT**, đúng với dbt + DuckDB:
 
 ## 14. Chi phí RAM khi chạy Docker
 
-Quickstart mặc định của Airflow (CeleryExecutor + Redis + Flower) yêu cầu tối thiểu 4GB RAM, 2 CPU, ~10GB ổ đĩa — nhưng dư thừa cho một người chạy batch job. **Khuyến nghị dùng `LocalExecutor`**, bỏ Redis/Celery/Flower.
+Quickstart mặc định của Airflow (CeleryExecutor + Redis + Flower) yêu cầu tối thiểu 4GB RAM, 2 CPU, \~10GB ổ đĩa — nhưng dư thừa cho một người chạy batch job. **Khuyến nghị dùng `LocalExecutor`**, bỏ Redis/Celery/Flower.
 
 | Thành phần | RAM ước tính |
-|---|---|
-| Airflow webserver + scheduler (LocalExecutor) | ~1.5–2.5 GB |
-| Postgres (chỉ metadata Airflow) | ~200–400 MB |
-| Task ingestion (Python/Polars) | ~300–800 MB khi chạy |
-| Task dbt-duckdb transform | ~1–2 GB khi chạy |
-| Streamlit (local) | ~200–400 MB |
-| **Tổng khi chạy đồng thời** | **~6–8 GB — nên có máy 8–16 GB RAM** |
+| --- | --- |
+| Airflow webserver + scheduler (LocalExecutor) | \~1.5–2.5 GB |
+| Postgres (chỉ metadata Airflow) | \~200–400 MB |
+| Task ingestion (Python/Polars) | \~300–800 MB khi chạy |
+| Task dbt-duckdb transform | \~1–2 GB khi chạy |
+| Streamlit (local) | \~200–400 MB |
+| **Tổng khi chạy đồng thời** | **\~6–8 GB — nên có máy 8–16 GB RAM** |
 
 Docker Desktop (Mac/Windows) chiếm thêm RAM cho VM nền, chưa tính trong bảng — nên để dư margin. Khi public, chỉ Streamlit cần chạy 24/7 (trên Streamlit Cloud); Airflow + DuckDB chỉ cần chạy local/CI khi refresh dữ liệu.
 
 ## 15. Giấy phép dữ liệu & phạm vi được public
 
 | Nguồn | Public lại được không |
-|---|---|
+| --- | --- |
 | SEC EDGAR (fundamentals) | Được — dữ liệu chính phủ Mỹ, public domain, không giới hạn redistribution |
 | Giá từ yfinance | Không nên — API không chính thức, Yahoo giới hạn chỉ dùng cá nhân; Yahoo không được phép redistribute lại dữ liệu mua từ nhà cung cấp gốc |
 | Giá/metric từ Finnhub free tier | Không được — ToS nêu rõ free tier chỉ dùng cá nhân, redistribute cần được Finnhub chấp thuận bằng văn bản |
@@ -184,24 +181,30 @@ Docker Desktop (Mac/Windows) chiếm thêm RAM cho VM nền, chưa tính trong b
 ## 16. Rủi ro triển khai cần xử lý trước (tránh lỗi/crash)
 
 **A. DuckDB single-writer + Airflow chạy song song**
+
 - Nguy cơ: hai task cùng mở ghi `warehouse.duckdb` → lock error, task crash.
 - `max_active_tasks=1` chỉ là workaround cấp DAG, không đảm bảo an toàn nếu DAG khác cũng đụng file này cùng lúc.
 - Xử lý chắc hơn: nối các task ghi DuckDB bằng dependency tường minh (`>>`) thay vì chỉ dựa pool/slot config; đóng connection trong `try/finally` để không để sót lock file khi task bị kill giữa chừng; nếu một lần chạy từng crash để lại lock, cần dọn lock trước khi retry.
 
 **B. RAM trên Windows khi chạy dbt build + Airflow cùng lúc**
+
 - 8GB RAM trên Windows thực tế rất sát, dễ khiến Docker Desktop treo hoặc container bị OOM-kill.
 - Test ngay tuần đầu Phase 1: `docker compose up` với LocalExecutor, trigger `dbt_transform_dag`, theo dõi bằng `docker stats`.
 - Nếu máy yếu: cân nhắc chạy dbt/DuckDB **ngoài Docker** (venv Python local), chỉ Docker hoá phần Airflow để giảm tải RAM.
 
 **C. Airflow dễ ngốn thời gian debug infra thay vì domain logic**
+
 - Rủi ro chính là tiến độ, không phải kỹ thuật thuần: lịch 3 tháng không có buffer cho Airflow lỗi vặt (scheduler không nhận DAG, webserver không start, metadata DB migration lỗi).
 - Mốc chặn: hết tuần 1 Phase 1 mà `docker compose up` + 1 DAG đơn giản chưa chạy ổn định, chuyển sang phương án nhẹ hơn (cron + Makefile, hoặc Prefect) — không để Airflow thành nút thắt cả project.
 
 **D. Factor construction chưa có bước validate — có thể ra kết quả sai âm thầm**
+
 - **Đã chốt: equal-weight** cho `gold_composite_score` ở MVP Phase 1 — 0.25×Value + 0.25×Growth + 0.25×Momentum + 0.25×Quality. IC-weighted/PCA cần backtest đệ quy (walk-forward IC) và tự mang rủi ro look-ahead nếu dùng IC tính trên toàn mẫu — để dành cho giai đoạn sau nếu còn thời gian.
 - Thiếu bước kiểm tra tương quan chéo giữa factor (orthogonalization/VIF): factor tương quan cao mà cộng trực tiếp sẽ làm composite score thiên lệch, không báo lỗi gì, chỉ cho kết quả sai — vẫn cần làm dù đã chốt equal-weight.
+- **Đã chốt: ngưỡng fallback z-score sector là `n >= 5`** (đếm bằng `count(column_name)`, không dùng `count(*)` vì sẽ tính nhầm cả dòng NULL). Test trên dữ liệu thật: 5 sector rơi vào fallback (Utilities 4, Energy 2, Basic Materials/Real Estate/Financial Services 1 mỗi nhóm) — chấp nhận Utilities (n=4) dùng z-score toàn universe thay vì hạ ngưỡng xuống 4, ưu tiên một ngưỡng đơn giản, dễ bảo vệ hơn là tối ưu từng trường hợp biên.
 
 **E. Lỗi gọi API bên ngoài — nguyên nhân crash phổ biến nhất của task ingestion**
+
 - EDGAR yêu cầu header `User-Agent` hợp lệ kèm contact info — thiếu sẽ bị từ chối (403).
 - Rate limit (EDGAR 10 req/s, Finnhub free tier 60 req/phút) — cần retry có backoff, không retry ngay lập tức.
 - Free-tier price data thiếu mã delisted — document rõ trong backtest output là giới hạn đã biết, kèm kịch bản "pessimistic" giả định penalty khi delist.
