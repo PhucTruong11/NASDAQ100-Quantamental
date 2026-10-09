@@ -1,10 +1,5 @@
-# ============================================================
 # docker-compose.yml — Airflow LocalExecutor (Section 14)
-# ============================================================
-# Chạy: docker compose up
-# RAM ước tính: ~2–3 GB (LocalExecutor, không có Redis/Celery/Flower)
-#
-# TODO Phase 1:
+
 #   - Điền image version Airflow
 #   - Mount volume warehouse.duckdb và data/raw/
 #   - Cấu hình LocalExecutor

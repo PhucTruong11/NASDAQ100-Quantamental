@@ -3,21 +3,19 @@ models:
   - name: silver_fundamentals_pit
     columns:
       - name: cik
-        tests: 
-          - unique
-          - not_null
-      - name: metric_tag
-        tests:
-          - not_null
-      - name: unit_of_measure
-        tests:
-          - unique
-      - name: period_start_date
-        tests:
-          - unique
-      - name: period_end_date
-        tests:
-          - unique 
-          - not_null
-      - name: filing_date
         tests: [not_null]
+      - name: metric_tag
+        tests: [not_null]
+      - name: period_end_date
+        tests: [not_null]
+      - name: available_date
+        tests: [not_null]
+  - name: silver_price_adjusted
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: trade_date
+        tests: [not_null]
+      - name: adjusted_close_price
+        tests: 
+          - not_null

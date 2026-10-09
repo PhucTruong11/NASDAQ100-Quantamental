@@ -14,9 +14,9 @@ sources:
         description: "Dữ liệu Báo cáo tài chính (SEC)"
         meta:
           # DuckDB hỗ trợ Glob Pattern: Đọc gộp TẤT CẢ các file edgar_*.parquet cùng lúc!
-          external_location: "../data/raw/edgar/*.parquet"
+          external_location: "../data/raw/edgar/edgar_*.parquet"
 
       - name: prices
         description: "Dữ liệu lịch sử Giá (Yahoo)"
         meta:
-          external_location: "../data/raw/prices/*.parquet"
+          external_location: "../data/raw/prices/price_*.parquet"

@@ -22,5 +22,5 @@ models:
       +materialized: table
     silver:
       +materialized: table
-    gold:
-      +materialized: table
+    # gold:   # bật lại khi có models/gold
+    #   +materialized: table
