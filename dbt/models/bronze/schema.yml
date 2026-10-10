@@ -22,3 +22,9 @@ models:
         tests: [not_null]
       - name: "CIK"
         tests: [not_null]
+  - name: bronze_sector
+    columns:
+      - name: "Ticker"
+        tests: [not_null]
+      - name: "Sector"
+        tests: [not_null]

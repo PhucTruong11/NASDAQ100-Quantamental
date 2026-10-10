@@ -20,3 +20,8 @@ sources:
         description: "Dữ liệu lịch sử Giá (Yahoo)"
         meta:
           external_location: "../data/raw/prices/price_*.parquet"
+
+      - name: sector
+        description: "Sector/industry hiện tại của từng mã (Yahoo), ảnh chụp 1 file duy nhất"
+        meta:
+          external_location: "../data/raw/sector/sector.parquet"

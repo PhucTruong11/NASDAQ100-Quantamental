@@ -106,6 +106,9 @@ nasdaq-quantamental/
 - DuckDB single-writer → cần tuần tự hoá task ghi.
 - Phạm vi v1 chỉ NASDAQ-100; schema để sẵn cột `market`/`exchange` để mở rộng VN sau này.
 - 6 CIK là foreign private issuer, nộp 20-F/40-F/6-K thay vì 10-K/10-Q (ASML, ARM, PDD, CCEP, Thomson Reuters, Ferrovial) → không có fundamentals. Vẫn giữ trong `silver_universe_membership` (đúng thực tế thành viên index), nhưng `gold_composite_score` = NULL cho các mã này, loại khỏi backtest/screener — không reweighting lại trên các pillar còn lại.
+- `silver_universe_membership` và sector mới chỉ có **1 phiên bản** (snapshot chạy từ hiện tại trở đi) → backtest quá khứ đang dùng thành phần/sector **hiện tại** áp cho mọi ngày trong lịch sử, chưa phải point-in-time thật. Cần backfill lịch sử (đã có nguồn monthly archive tìm được trước đó) trước khi tin tưởng kết quả backtest nhiều năm.
+- Fundamentals v1 chỉ dùng số liệu **năm (10-K)**, không TTM theo quý → pillar dựa trên fundamentals chỉ đổi 1 lần/năm mỗi công ty, đứng yên 11/12 tháng dù rebalance hàng tháng. Không phải bug.
+- Revenue qua EDGAR bị phân mảnh tag (ASC 606 đổi chuẩn \~2018) → dùng chuỗi fallback `Revenues` → `RevenueFromContractWithCustomerExcludingAssessedTax` → `SalesRevenueNet`, vẫn có thể còn thiếu một số CIK dùng tag khác chưa liệt kê.
 
 ## 9. Vai trò của Airflow
 

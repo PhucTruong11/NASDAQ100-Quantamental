@@ -54,7 +54,12 @@ class EdgarAdapter:
             "NetIncomeLoss",            # Lợi nhuận ròng
             "Revenues",                 # Doanh thu (hoặc SalesRevenueNet)
             "EarningsPerShareBasic",    # EPS
-            "CommonStockSharesOutstanding" # Số lượng cổ phiếu lưu hành
+            "CommonStockSharesOutstanding", # Số lượng cổ phiếu lưu hành
+            "NetCashProvidedByUsedInOperatingActivities", # OCF
+            "PaymentsToAcquirePropertyPlantAndEquipment", # Capex
+            "ShareBasedCompensation",   # SBC
+            "RevenueFromContractWithCustomerExcludingAssessedTax", # Revenue fallback 1
+            "SalesRevenueNet"           # Revenue fallback 2
         ]
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))

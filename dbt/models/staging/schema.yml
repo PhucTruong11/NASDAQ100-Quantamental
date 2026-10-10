@@ -19,3 +19,9 @@ models:
           - accepted_values:
               arguments:
                 values: ["10-K", "10-Q"]
+  - name: stg_sector
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: sector
+        tests: [not_null]
