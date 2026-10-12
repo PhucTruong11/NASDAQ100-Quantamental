@@ -1,5 +1,11 @@
 {{ config(materialized='view') }}
 
+{#
+    STAGING LAYER: Làm sạch và chuẩn hóa BCTC từ Bronze.
+    - Lọc scope: Chỉ giữ lại báo cáo năm (10-K) và báo cáo quý (10-Q), loại bỏ form sửa đổi/khác.
+    - Chuẩn hóa tên cột: Chuyển sang snake_case chuẩn (period_start_date, available_date/filing_date).
+    - Giữ nguyên số dòng (chưa deduplicate; việc dedup PIT được thực hiện ở tầng Silver).
+#}
 SELECT
     cik,
     {{ trim_string('tag') }}     AS metric_tag,

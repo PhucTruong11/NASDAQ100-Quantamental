@@ -1,4 +1,10 @@
 {{ config(materialized='table')}}
+
+{#
+    BRONZE LAYER: Nạp dữ liệu BCTC thô từ SEC EDGAR API (Parquet).
+    - Nhiệm vụ: Ép kiểu an toàn (safe_cast), làm sạch chuỗi (clean_string).
+    - Nguyên tắc: Giữ nguyên 100% số dòng và hạt (grain) gốc từ SEC, chưa lọc rác.
+#}
 SELECT
     {{ clean_string('cik')}} as cik,
     {{ safe_cast('"tag"', 'varchar')}} as tag,

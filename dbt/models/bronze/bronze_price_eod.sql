@@ -1,4 +1,10 @@
 {{ config(materialized='table')}}
+
+{#
+    BRONZE LAYER: Nạp dữ liệu giá EOD hàng ngày từ Parquet.
+    - Nhiệm vụ: Đọc trực tiếp các file Parquet giá, chuẩn hóa kiểu dữ liệu.
+    - Lưu ý: Cột Close đã tự điều chỉnh split từ Yahoo, nhưng CHƯA điều chỉnh cổ tức.
+#}
 SELECT
     {{ safe_cast('"Date"', 'date') }}           as "Date",
     {{ safe_cast('"Open"', 'double') }}         as "Open",

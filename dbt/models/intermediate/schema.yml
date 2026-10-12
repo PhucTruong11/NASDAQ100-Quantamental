@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: int_rebalance_universe
+    columns:
+      - name: "rebalance_date"
+        tests: [not_null]
+      - name: "ticker"
+        tests: [not_null]
+  
+  - name: int_momentum_ratio
+    columns:
+      - name: "rebalance_date"
+        tests: [not_null]
+      - name: "ticker"
+        tests: [not_null]
+
+  - name: int_growth_ratio
+    columns:
+      - name: "rebalance_date"
+        tests: [not_null]
+      - name: "ticker"
+        tests: [not_null]
+  
+  - name: int_fcf_yield
+    columns:
+      - name: "rebalance_date"
+        tests: [not_null]
+      - name: "ticker"
+        tests: [not_null]
+  
+  - name: int_earnings_surprise
+    columns:
+      - name: "rebalance_date"
+        tests: [not_null]
+      - name: "ticker"
+        tests: [not_null]
+
+  - name: int_sbc_ratio
+    columns:
+      - name: "rebalance_date"
+        tests: [not_null]
+      - name: "ticker"
+        tests: [not_null]

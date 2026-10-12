@@ -1,5 +1,12 @@
 {{ config(materialized='table') }}
 
+{#
+    SILVER LAYER: Tính toán giá đóng cửa điều chỉnh cổ tức (Adjusted Close Price).
+    - Phương pháp: Chiết khấu ngược từ hiện tại về quá khứ qua hệ số cổ tức (1 - div / prev_close).
+    - Giải pháp kỹ thuật: DuckDB thiếu PRODUCT() window -> dùng đồng nhất thức EXP(SUM(LN(factor)))
+      trên khung cửa sổ ORDER BY trade_date DESC để nhân dồn lũy kế.
+    - Đảm bảo khớp số liệu Yahoo Finance với dung sai < 0.5%.
+#}
 WITH base AS (
     SELECT
         *,
