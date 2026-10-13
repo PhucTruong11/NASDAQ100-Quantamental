@@ -10,6 +10,9 @@ x-airflow-env: &airflow-env
   AIRFLOW__CORE__EXECUTOR: LocalExecutor
   AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
   AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  AIRFLOW__WEBSERVER__SECRET_KEY: "quant_airflow_secret_key_12345"
+  PYTHONPATH: "/opt/airflow"
+  _PIP_ADDITIONAL_REQUIREMENTS: "duckdb==1.1.0 dbt-duckdb polars yfinance"
 
 x-airflow-common: &airflow-common
   image: apache/airflow:2.9.3
@@ -18,8 +21,7 @@ x-airflow-common: &airflow-common
     - ./dags:/opt/airflow/dags
     - ./ingestion:/opt/airflow/ingestion
     - ./dbt:/opt/airflow/dbt
-    - ./data/raw:/opt/airflow/data/raw
-    - ./data/warehouse.duckdb:/opt/airflow/data/warehouse.duckdb
+    - ./data:/opt/airflow/data
   depends_on:
     postgres:
       condition: service_healthy
@@ -41,10 +43,22 @@ services:
     command: webserver
     ports:
       - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
 
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
 
   airflow-init:
     <<: *airflow-common
