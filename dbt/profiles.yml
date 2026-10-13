@@ -4,5 +4,4 @@ nasdaq_quantamental:
     dev:
       type: duckdb
       path: '../data/warehouse.duckdb'
-      extensions:
-        - parquet
+
