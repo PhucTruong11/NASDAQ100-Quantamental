@@ -12,16 +12,27 @@ WITH rebalance_dates AS (
         date_trunc('month', trade_date) AS rebalance_month, 
         MAX(trade_date)                 AS rebalance_date
     FROM {{ ref('silver_price_adjusted') }}
+    -- Do not label an unfinished download month as its month-end rebalance.
+    WHERE trade_date < DATE_TRUNC('month', CURRENT_DATE)
     GROUP BY 1
 )
 
 SELECT
     rd.rebalance_date,
-    u."Ticker" AS ticker,      -- Chuẩn hóa về snake_case
-    u."CIK"    AS cik,         -- Chuẩn hóa về snake_case
-    s.sector                   -- Gộp sector sẵn cho các bước z-score sau này
+    u.ticker,
+    u.cik,
+    u.membership_quality,
+    u.identifier_quality,
+    u.valid_from AS membership_valid_from,
+    u.valid_to AS membership_valid_to,
+    s.sector
 FROM rebalance_dates rd
-JOIN {{ ref('silver_universe_membership') }} u
-    ON (u.dbt_valid_to > rd.rebalance_date OR u.dbt_valid_to IS NULL)
+JOIN {{ ref('silver_universe_membership_pit') }} u
+    ON u.valid_from < CAST(rd.rebalance_date + INTERVAL 1 DAY AS TIMESTAMP)
+   AND (u.valid_to > rd.rebalance_date OR u.valid_to IS NULL)
+   AND (u.membership_quality = 'effective'
+        {% if var('allow_observed_universe', false) %}
+        OR u.membership_quality IN ('monthly_observation', 'live_observation')
+        {% endif %})
 LEFT JOIN {{ ref('stg_sector') }} s
-    ON s.ticker = u."Ticker"
+    ON s.ticker = u.ticker

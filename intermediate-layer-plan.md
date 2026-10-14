@@ -1,5 +1,7 @@
 # Intermediate Layer — Plan
 
+> Plan này mô tả thiết kế ban đầu. SQL mẫu universe/FY và nhãn TTM bên dưới đã được thay thế bởi [semantics-and-universe.md](semantics-and-universe.md): kiểm tra cả hai đầu membership window, annual USD duration 330–400 ngày, availability +1 ngày và ghép các fact cùng kỳ. Không dùng lại mẫu bỏ `dbt_valid_from` hoặc chỉ lọc `FY`.
+
 ## 1. Thứ tự triển khai
 
 | Phase | Việc | Trạng thái / Phụ thuộc |

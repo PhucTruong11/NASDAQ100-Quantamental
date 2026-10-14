@@ -8,7 +8,15 @@
 #}
 CASE 
     -- 1. Nếu giá trị thô bị NULL (ví dụ: FPI hoặc chưa đủ 12 tháng lịch sử) -> giữ nguyên NULL
-    WHEN {{ column_name }} IS NULL THEN NULL
+    WHEN {{ column_name }} IS NULL OR {{ sector_col }} IS NULL THEN NULL
+    -- DuckDB GREATEST/LEAST ignore NULL arguments. Guard before clipping so
+    -- a one-row/constant cross-section cannot accidentally get score -3.
+    WHEN NOT COALESCE(
+        (COUNT({{ column_name }}) OVER (PARTITION BY {{ partition_date }}, {{ sector_col }}) >= 5
+         AND STDDEV_SAMP({{ column_name }}) OVER (PARTITION BY {{ partition_date }}, {{ sector_col }}) > 0)
+        OR STDDEV_SAMP({{ column_name }}) OVER (PARTITION BY {{ partition_date }}) > 0,
+        FALSE
+    ) THEN NULL
 
     ELSE 
         -- 2. Winsorization kẹp giá trị trong khoảng [-3.0, +3.0]

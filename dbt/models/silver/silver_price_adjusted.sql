@@ -50,6 +50,12 @@ SELECT
     trade_date,
     close_price AS raw_close_price,
     split_ratio,
+    -- Undo only future splits in Yahoo's split-adjusted Close to recover
+    -- the nominal price traded on this date. Return prices stay unchanged.
+    close_price * COALESCE(EXP(SUM(LN(CASE WHEN split_ratio > 0 THEN split_ratio ELSE 1.0 END)) OVER (
+        PARTITION BY ticker ORDER BY trade_date DESC
+        ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+    )), 1.0) AS nominal_close_price,
     -- Ngày gần nhất có window frame rỗng -> NULL -> coalesce về 1.0 (không điều chỉnh)
     COALESCE(cum_dividend_factor, 1.0) AS dividend_adjustment_factor,
     close_price * COALESCE(cum_dividend_factor, 1.0) AS adjusted_close_price,

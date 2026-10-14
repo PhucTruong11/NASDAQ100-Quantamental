@@ -1,10 +1,16 @@
 import logging
 import time
-from universe import NasdaqUniverse
-from adapters.edgar import EdgarAdapter
-from adapters.yahoo import YahooAdapter
-from adapters.sector import SectorAdapter
-from watermark import WatermarkManager
+from pathlib import Path
+import sys
+import polars as pl
+
+if not __package__:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from ingestion.universe import NasdaqUniverse
+from ingestion.adapters.edgar import EdgarAdapter
+from ingestion.adapters.yahoo import YahooAdapter
+from ingestion.adapters.sector import SectorAdapter
+from ingestion.watermark import WatermarkManager
 
 # Cấu hình logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -23,6 +29,16 @@ def main():
     
     cik_list = df_nasdaq["CIK"].to_list()
     ticker_list = df_nasdaq["Ticker"].to_list()
+    # Ingest all known historical tickers, including removed constituents.
+    # Unknown CIKs remain explicit gaps; still attempt their historical prices.
+    history_path = Path(__file__).resolve().parents[1] / 'dbt/seeds/universe_membership_history.csv'
+    if history_path.exists():
+        history = pl.read_csv(history_path, schema_overrides={'cik': pl.String})
+        known = dict(zip(ticker_list, cik_list))
+        for row in history.select('ticker', 'cik').unique().to_dicts():
+            if row['ticker'] not in known:
+                known[row['ticker']] = row['cik']
+        ticker_list, cik_list = list(known), list(known.values())
     
     # 2. Khởi tạo các Adapters và Watermark
     edgar = EdgarAdapter(user_agent="truongtrongphuc584@gmail.com")
@@ -38,7 +54,9 @@ def main():
         logger.info(f"Đang xử lý {ticker} (CIK: {cik})...")
         try:
             yahoo_success = yahoo.run(ticker)
-            edgar_success = edgar.run(cik)
+            edgar_success = edgar.run(cik) if cik else False
+            if not cik:
+                logger.warning('Historical ticker %s has no verified CIK mapping; fundamentals remain missing.', ticker)
             
             # Chỉ set watermark nếu cả 2 đều thành công
             if yahoo_success and edgar_success:
