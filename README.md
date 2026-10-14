@@ -54,8 +54,12 @@ docker compose up -d
 ```
 
 ## Giới hạn đã biết (Known Limitations)
-1. **Dữ liệu giá miễn phí (Survivorship Bias nhẹ):** API giá free-tier (yfinance) thường không giữ lại lịch sử giá của các mã đã hủy niêm yết (delisted). Dự án bù đắp bằng cách áp dụng *penalty assumption* trong module Backtest.
-2. **DuckDB Single-Writer Constraint:** DuckDB chỉ cho phép 1 process ghi tại 1 thời điểm. Dự án giải quyết triệt để thông qua thiết kế "Tách 2 phase" tại Airflow DAGs (chạy `dbt build` trong 1 BashOperator duy nhất).
+Quy ước đang triển khai và lệnh kiểm chứng nằm tại [semantics-and-universe.md](semantics-and-universe.md). Fundamentals chọn annual USD theo duration 330–400 ngày, ghép cùng kỳ, dùng filing date + 1 ngày; FCF giữ NULL khi thiếu Capex và dùng giá/shares cùng cơ sở split.
+
+Universe lịch sử hiện có archive observation từ 31/07/2023, **chưa có ngày hiệu lực chính xác**. Mặc định chỉ cho phép lịch sử `effective`; dùng archive cần chủ động bật `allow_observed_universe: true`. Kỳ chưa có coverage không được áp danh sách hiện tại ngược về quá khứ. Các mã lịch sử thiếu CIK/giá/sector được giữ và cảnh báo qua dbt tests.
+
+1. **Dữ liệu giá miễn phí:** yfinance có thể thiếu giá các mã delisted. Backtest và penalty assumption chưa được triển khai; thiếu dữ liệu này vẫn có thể gây sai lệch đáng kể.
+2. **DuckDB Single-Writer Constraint:** Các task transformation được nối tuần tự. Vẫn cần kiểm soát các DAG/process khác cùng ghi warehouse.
 
 ## Giấy phép Dữ liệu & Disclaimer
 *   Dữ liệu BCTC từ **SEC EDGAR** là public domain của chính phủ Mỹ.

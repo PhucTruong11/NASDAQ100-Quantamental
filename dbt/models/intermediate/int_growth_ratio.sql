@@ -3,7 +3,7 @@
 {#
     INTERMEDIATE LAYER: Factor Tăng trưởng - Rule of 40 (Growth Pillar).
     - Công thức: Rule of 40 = Revenue Growth YoY + Net Margin.
-    - As-of Point-in-time: Chỉ dùng BCTC năm (10-K) đã công bố trước rebalance_date.
+    - As-of Point-in-time: Dùng annual USD flows có duration 330-400 ngày đã công bố trước rebalance_date.
     - Fallback Doanh thu: Revenues -> RevenueFromContract... -> SalesRevenueNet.
     - Chuẩn hóa: Áp macro zscore_sector_neutral để trung hòa ngành và kẹp [-3, 3].
 #}
@@ -16,20 +16,22 @@ WITH current_fundamentals AS (
         u.sector,
         rev.metric_value    AS rev_curr,
         rev.period_end_date AS period_end_curr,
+        rev.period_start_date AS period_start_curr,
+        rev.available_date AS revenue_available_date,
+        ni.available_date AS income_available_date,
         ni.metric_value     AS net_income_curr
     FROM {{ ref('int_rebalance_universe') }} u
 
     -- Lấy Doanh thu năm gần nhất kèm Fallback chain
     LEFT JOIN LATERAL (
-        SELECT f.metric_value, f.period_end_date
-        FROM {{ ref('silver_fundamentals_pit') }} f
+        SELECT f.*
+        FROM {{ ref('silver_fundamentals_annual') }} f
         WHERE f.cik = u.cik
           AND f.metric_tag IN (
               'Revenues',
               'RevenueFromContractWithCustomerExcludingAssessedTax',
               'SalesRevenueNet'
           )
-          AND f.fiscal_period = 'FY'
           AND f.available_date <= u.rebalance_date
         ORDER BY 
             f.period_end_date DESC,
@@ -38,21 +40,22 @@ WITH current_fundamentals AS (
                 WHEN 'RevenueFromContractWithCustomerExcludingAssessedTax' THEN 2
                 WHEN 'SalesRevenueNet' THEN 3
             END ASC,
-            f.available_date DESC
+            f.available_date DESC, f.period_start_date DESC
         LIMIT 1
     ) rev ON TRUE
 
     -- Lấy Lợi nhuận ròng năm gần nhất
     LEFT JOIN LATERAL (
-        SELECT f.metric_value
-        FROM {{ ref('silver_fundamentals_pit') }} f
+        SELECT f.*
+        FROM {{ ref('silver_fundamentals_annual') }} f
         WHERE f.cik = u.cik
           AND f.metric_tag = 'NetIncomeLoss'
-          AND f.fiscal_period = 'FY'
+          AND f.period_start_date = rev.period_start_date
+          AND f.period_end_date = rev.period_end_date
           AND f.available_date <= u.rebalance_date
         ORDER BY 
             f.period_end_date DESC,
-            f.available_date DESC
+            f.available_date DESC, f.period_start_date DESC
         LIMIT 1
     ) ni ON TRUE
 ),
@@ -60,19 +63,22 @@ WITH current_fundamentals AS (
 with_previous_year AS (
     SELECT
         c.*,
-        prev.metric_value AS rev_prev
+        prev.metric_value AS rev_prev,
+        prev.available_date AS previous_revenue_available_date,
+        prev.period_end_date AS previous_period_end_date
     FROM current_fundamentals c
     LEFT JOIN LATERAL (
-        SELECT f.metric_value
-        FROM {{ ref('silver_fundamentals_pit') }} f
+        SELECT f.*
+        FROM {{ ref('silver_fundamentals_annual') }} f
         WHERE f.cik = c.cik
           AND f.metric_tag IN (
               'Revenues',
               'RevenueFromContractWithCustomerExcludingAssessedTax',
               'SalesRevenueNet'
           )
-          AND f.fiscal_period = 'FY'
-          AND f.period_end_date < c.period_end_curr  -- Lùi lại niên độ liền trước
+          AND f.available_date <= c.rebalance_date
+          AND DATE_DIFF('day', f.period_end_date, c.period_end_curr) BETWEEN 330 AND 400
+          AND DATE_DIFF('day', f.period_start_date, c.period_start_curr) BETWEEN 330 AND 400
         ORDER BY 
             f.period_end_date DESC,
             CASE f.metric_tag
@@ -80,7 +86,7 @@ with_previous_year AS (
                 WHEN 'RevenueFromContractWithCustomerExcludingAssessedTax' THEN 2
                 WHEN 'SalesRevenueNet' THEN 3
             END ASC,
-            f.available_date DESC
+            f.available_date DESC, f.period_start_date DESC
         LIMIT 1
     ) prev ON TRUE
 ),
@@ -90,6 +96,8 @@ calculated_ratios AS (
         rebalance_date,
         ticker,
         sector,
+        period_start_curr, period_end_curr, previous_period_end_date,
+        revenue_available_date, income_available_date, previous_revenue_available_date,
         rev_curr,
         rev_prev,
         net_income_curr,
@@ -107,6 +115,8 @@ SELECT
     rebalance_date,
     ticker,
     sector,
+    period_start_curr, period_end_curr, previous_period_end_date,
+    revenue_available_date, income_available_date, previous_revenue_available_date,
     rev_growth_yoy,
     net_margin,
     rule_of_40_raw,

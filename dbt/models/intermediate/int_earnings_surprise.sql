@@ -24,6 +24,7 @@ WITH current_quarter AS (
         FROM {{ ref('silver_fundamentals_pit') }} f
         WHERE f.cik = u.cik
           AND f.metric_tag = 'NetIncomeLoss'
+          AND f.unit_of_measure = 'USD'
           AND f.available_date <= u.rebalance_date
           AND DATEDIFF('day', f.period_start_date, f.period_end_date) BETWEEN 65 AND 115
         ORDER BY f.period_end_date DESC, f.available_date DESC
@@ -43,6 +44,7 @@ with_previous_year_quarter AS (
         FROM {{ ref('silver_fundamentals_pit') }} f
         WHERE f.cik = c.cik
           AND f.metric_tag = 'NetIncomeLoss'
+          AND f.unit_of_measure = 'USD'
           AND f.available_date <= c.rebalance_date
           AND DATEDIFF('day', f.period_start_date, f.period_end_date) BETWEEN 65 AND 115
           AND f.period_end_date BETWEEN c.period_end_curr - INTERVAL 395 DAY 

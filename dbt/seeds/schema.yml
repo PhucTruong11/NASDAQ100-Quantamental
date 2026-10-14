@@ -1,0 +1,27 @@
+version: 2
+seeds:
+  - name: universe_membership_history
+    description: "Dated membership windows. monthly_observation is an explicit approximation, not an index effective date."
+    config:
+      column_types:
+        ticker: varchar
+        cik: varchar
+        company: varchar
+        valid_from: date
+        valid_to: date
+        membership_quality: varchar
+        identifier_quality: varchar
+        source_url: varchar
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: valid_from
+        tests: [not_null]
+      - name: valid_to
+        tests: [not_null]
+      - name: membership_quality
+        tests:
+          - accepted_values:
+              values: ['effective', 'monthly_observation']
+      - name: source_url
+        tests: [not_null]
