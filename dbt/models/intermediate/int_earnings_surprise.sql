@@ -1,8 +1,9 @@
 {{ config(materialized='table') }}
 
 {#
-    INTERMEDIATE LAYER: Factor Bất ngờ Lợi nhuận - Earnings Surprise (Momentum / Quality Pillar).
-    - Công thức: SUE Drift = (Net Income Quý t - Net Income Quý t-1Y) / |Net Income Quý t-1Y|.
+    INTERMEDIATE LAYER: Quarterly Net Income YoY Growth — Quality proxy MVP.
+    - Công thức: (Net Income Quý t - Net Income Quý t-1Y) / |Net Income Quý t-1Y|.
+    - Giữ tên earnings_surprise_* để tương thích. Không đo analyst surprise hay SUE chuẩn.
     - Chống Stock Split: Dùng Net Income (USD) thay vì EPS thô để tránh sai lệch khi chia tách cổ phiếu.
     - As-of Point-in-Time: Chỉ lấy BCTC quý (10-Q/10-K) đã công bố trước rebalance_date.
     - Chuẩn hóa: Áp macro zscore_sector_neutral để trung hòa ngành và kẹp [-3, 3].

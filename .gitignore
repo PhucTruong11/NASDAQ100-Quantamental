@@ -13,6 +13,9 @@ warehouse.duckdb.wal
 
 # Parquet raw data (thường lớn, không commit)
 data/raw/
+data/.cache/
+data/reports/gold/*.csv
+data/reports/gold/*.json
 
 # dbt
 dbt/target/

@@ -1,0 +1,63 @@
+version: 2
+
+models:
+  - name: gold_growth_pillar
+    description: "Growth pillar từ growth_zscore."
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: rebalance_date
+        tests: [not_null]
+
+  - name: gold_momentum_pillar
+    description: "Momentum pillar từ momentum_zscore."
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: rebalance_date
+        tests: [not_null]
+
+  - name: gold_quality_pillar
+    description: >-
+      MVP Quality proxy v1: quarterly net-income YoY growth, sector-normalized and
+      clipped to [-3, 3]. Uses point-in-time available quarterly USD facts upstream.
+      This is not analyst-consensus surprise, standardized SUE, or profitability/stability.
+      Legacy earnings_surprise names remain for compatibility.
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: rebalance_date
+        tests: [not_null]
+
+      - name: earnings_surprise_zscore
+        description: "Legacy alias: sector z-score of (NI_q - NI_q_last_year) / abs(NI_q_last_year); zero denominator stays NULL."
+      - name: quality_score
+        description: "Passthrough of earnings_surprise_zscore; higher means stronger quarterly earnings growth under this proxy."
+
+  - name: gold_value_pillar
+    description: "FCF/SBC blend; cần đủ cả hai scores."
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: rebalance_date
+        tests: [not_null]
+
+  - name: gold_compose_score
+    description:  "4 pillars equal-weight; giữ provenance và missingness."
+    columns:
+      - name: ticker
+        tests: [not_null]
+      - name: rebalance_date
+        tests: [not_null]
+      - name: membership_quality
+        tests: [not_null]
+      - name: identifier_quality
+        tests: [not_null]
+      - name: available_pillar_count
+        tests: [not_null]
+        description: "Number of non-NULL pillar scores, from 0 to 4; zero is a valid score."
+      - name: is_score_eligible
+        tests: [not_null]
+        description: "True iff all 4 pillars exist; this does not certify effective-date universe history."
+      - name: composite_score
+        description: "Equal-weight average of 4 pillars; NULL if any pillar is missing."

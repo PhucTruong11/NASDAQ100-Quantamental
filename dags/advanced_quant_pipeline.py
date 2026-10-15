@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from airflow import DAG
+from airflow.models.param import Param
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
@@ -46,7 +47,8 @@ def fetch_sector():
     print(f"--> Bắt đầu cập nhật ngành GICS cho {len(tickers)} tickers...")
     
     sector_adapter = SectorAdapter(output_dir="/opt/airflow/data/raw/sector")
-    sector_adapter.run(tickers)
+    if not sector_adapter.run(tickers):
+        raise RuntimeError('Sector refresh incomplete; do not accept an old file as a successful refresh.')
     
     sector_path = Path("/opt/airflow/data/raw/sector/sector.parquet")
     if not sector_path.exists() or sector_path.stat().st_size == 0:
@@ -76,6 +78,14 @@ with DAG(
     schedule_interval=None,  # Kích hoạt thủ công khi test
     start_date=datetime(2024, 1, 1),
     catchup=False,
+    max_active_runs=1,
+    render_template_as_native_obj=True,
+    params={
+        'allow_observed_universe': Param(
+            False, type='boolean',
+            description='Research only: allow monthly/live universe observations in the child dbt DAG.',
+        ),
+    },
     tags=['ingestion', 'parquet', 'nasdaq100'],
 ) as dag:
     
@@ -98,7 +108,13 @@ with DAG(
     task_trigger_dbt = TriggerDagRunOperator(
         task_id='trigger_dbt_transformation',
         trigger_dag_id='dbt_transformation_pipeline',
-        wait_for_completion=False, # False: Bắn tín hiệu kích hoạt xong là xong; True: Đợi DAG con chạy xong mới kết thúc
+        conf={'allow_observed_universe': '{{ params.allow_observed_universe }}'},
+        wait_for_completion=True,
+        poke_interval=10,
+        allowed_states=['success'],
+        failed_states=['failed'],
+        execution_timeout=timedelta(hours=2),
+        retries=0,
         reset_dag_run=True, # Cho phép kích hoạt chạy lại nếu DAG con đã từng chạy
     )
     
