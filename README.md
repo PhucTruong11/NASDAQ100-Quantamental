@@ -29,7 +29,7 @@ Dự án tuân thủ nghiêm ngặt **Kiến trúc Medallion** với luồng x�
     *   **Staging:** Đổi tên, làm sạch kiểu dữ liệu.
     *   **Silver:** Xử lý SCD2 (Universe Membership) và Point-in-Time Join.
     *   **Intermediate:** Tính Ratios, Winsorize, Sector-neutral Z-score.
-    *   **Gold:** Gộp thành các Factor Pillars (Growth, Value, Quality, Momentum) $\rightarrow$ Equal-weight Composite Score.
+    *   **Gold:** Gộp thành các Factor Pillars (Growth, Value, Quality proxy, Momentum) $\rightarrow$ Equal-weight Composite Score. Quality MVP là tăng trưởng Net Income quý YoY. [Hướng dẫn chạy Gold, tests, coverage và research mode](gold-runtime-guide.md).
     *   **OBT (One Big Table):** Cung cấp data phẳng cho Streamlit và module Backtest.
 
 *(Xem chi tiết tại [architecture.md](architecture.md) và [data-flow.md](data-flow.md))*

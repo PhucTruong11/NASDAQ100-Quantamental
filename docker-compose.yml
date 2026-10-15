@@ -13,7 +13,7 @@ x-airflow-env: &airflow-env
   AIRFLOW__WEBSERVER__SECRET_KEY: "quant_airflow_secret_key_12345"
   PYTHONPATH: "/opt/airflow"
   DBT_PARTIAL_PARSE: "false"
-  _PIP_ADDITIONAL_REQUIREMENTS: "duckdb==1.1.0 dbt-duckdb polars yfinance"
+  _PIP_ADDITIONAL_REQUIREMENTS: "duckdb==1.5.5 dbt-core==1.12.6 dbt-duckdb==1.11.0 polars==2.0.0 yfinance==1.7.0"
 
 x-airflow-common: &airflow-common
   image: apache/airflow:2.9.3
@@ -23,6 +23,7 @@ x-airflow-common: &airflow-common
     - ./ingestion:/opt/airflow/ingestion
     - ./dbt:/opt/airflow/dbt
     - ./data:/opt/airflow/data
+    - ./data/.cache/pip:/home/airflow/.cache/pip
   depends_on:
     postgres:
       condition: service_healthy
@@ -41,6 +42,10 @@ services:
 
   airflow-webserver:
     <<: *airflow-common
+    environment:
+      <<: *airflow-env
+      # UI reads serialized DAGs/metadata; it does not execute data jobs.
+      _PIP_ADDITIONAL_REQUIREMENTS: ""
     command: webserver
     ports:
       - "8080:8080"
@@ -63,9 +68,11 @@ services:
 
   airflow-init:
     <<: *airflow-common
-    command: version
+    command: ["bash", "-c", "airflow pools set duckdb_access 1 'Serialize DuckDB warehouse access'"]
     environment:
       <<: *airflow-env
+      # Migration/user setup only needs the Airflow image's original packages.
+      _PIP_ADDITIONAL_REQUIREMENTS: ""
       _AIRFLOW_DB_MIGRATE: "true"
       _AIRFLOW_WWW_USER_CREATE: "true"
       _AIRFLOW_WWW_USER_USERNAME: admin

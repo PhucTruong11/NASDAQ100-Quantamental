@@ -448,7 +448,7 @@ Shares là proxy báo cáo đã biết; chưa tính issuance/buyback chưa công
 | `earnings_surprise_raw` | `DOUBLE` | Quarterly earnings growth YoY, decimal; denominator 0 → NULL. |
 | `earnings_surprise_zscore` | `DOUBLE` | Z-score của earnings-growth proxy. |
 
-Đây không phải SUE chuẩn có stddev của earnings changes ở mẫu số. Output chưa giữ period/availability dates hai quý, dù CTE dùng chúng để chọn. Code chưa dựng Q4 từ annual − YTD nếu nguồn thiếu fact duration quý riêng. Chốt ý nghĩa Quality trước Gold.
+Đây không phải SUE chuẩn có stddev của earnings changes ở mẫu số. Output chưa giữ period/availability dates hai quý, dù CTE dùng chúng để chọn. Code chưa dựng Q4 từ annual − YTD nếu nguồn thiếu fact duration quý riêng. Gold đã chốt dùng factor này làm earnings-growth proxy MVP v1; xem mục 7.6.
 
 ### 6.7 Chuẩn hóa score dùng chung
 
@@ -464,23 +464,23 @@ Shares là proxy báo cáo đã biết; chưa tính issuance/buyback chưa công
 
 **Checkpoint Intermediate:** grid/factors cùng grain; availability <= rebalance; annual components cùng kỳ; đọc NULL coverage từng factor. Missing CIK/price/sector giữ membership row và xuất warning, không tự bị giấu qua inner join.
 
-## 7. Gold sắp làm — schema đề xuất
+## 7. Gold — schema MVP hiện tại
 
-Gold dùng z-scores đã chuẩn hóa; không lặp lại as-of selection hoặc ratio construction. Mỗi model dự kiến `table`, key/grain ticker × rebalance_date. Có thể LEFT JOIN factor từ grid để giữ đủ rows và NULL coverage.
+Gold đã triển khai đủ 5 bảng, dùng z-scores đã chuẩn hóa; không lặp lại as-of selection hoặc ratio construction. Materialization `table`, key/grain ticker × rebalance_date; LEFT JOIN factor từ grid giữ rows và NULL coverage. Xem [Gold runtime guide](gold-runtime-guide.md) cho tests, báo cáo coverage tự động và research mode.
 
-### 7.1 Chốt naming trước khi viết
+### 7.1 Naming đang dùng
 
-| File đang rỗng | Tên trong plan cũ | Quy ước đề xuất ở đây |
+| File hiện tại | Tên trong plan cũ | Quy ước hiện tại |
 | --- | --- | --- |
-| gold_momentum_ratio.sql | gold_momentum_pillar | Giữ file hiện có; cột score là momentum_score |
+| gold_momentum_pillar.sql | gold_momentum_pillar | Đã đổi tên file từ gold_momentum_ratio.sql; score là momentum_score |
 | gold_growth_pillar.sql | gold_growth_pillar | Giữ tên |
 | gold_value_pillar.sql | gold_value_pillar | Giữ tên |
-| gold_quality_pillar.sql | gold_quality_pillar | Giữ tên, cần chốt proxy |
+| gold_quality_pillar.sql | gold_quality_pillar | Giữ tên, earnings-growth proxy MVP v1 |
 | gold_compose_score.sql | gold_composite_score | Giữ file hiện có; cột là composite_score |
 
-Naming này là đề xuất, chưa đổi tên hay triển khai SQL. Có thể rename có chủ đích nhưng phải cập nhật refs/docs cùng lúc.
+Tên hiện tại đã được dùng trong SQL và refs. Các bảng dưới đây mô tả schema đang triển khai.
 
-### 7.2 Ba cột chung cho cả 4 pillar — dự kiến
+### 7.2 Ba cột chung cho cả 4 pillar
 
 Mỗi pillar có **đủ ba cột chung này, cộng các cột riêng** trong schema bên dưới.
 
@@ -490,7 +490,7 @@ Mỗi pillar có **đủ ba cột chung này, cộng các cột riêng** trong s
 | ticker | VARCHAR | Key ticker từ grid |
 | sector | VARCHAR | Sector từ grid |
 
-### 7.3 `gold_momentum_ratio` — dự kiến
+### 7.3 `gold_momentum_pillar`
 
 **Input:** grid + int_momentum_ratio. **Làm gì:** alias score pillar một factor. **Toàn bộ output:** 3 cột chung + 2 cột sau.
 
@@ -499,7 +499,7 @@ Mỗi pillar có **đủ ba cột chung này, cộng các cột riêng** trong s
 | momentum_zscore | DOUBLE | Giữ score Intermediate để trace |
 | momentum_score | DOUBLE | = momentum_zscore; input NULL → NULL |
 
-### 7.4 `gold_growth_pillar` — dự kiến
+### 7.4 `gold_growth_pillar`
 
 **Input:** grid + int_growth_ratio. **Làm gì:** alias Growth score. **Toàn bộ output:** 3 cột chung + 2 cột sau.
 
@@ -508,7 +508,7 @@ Mỗi pillar có **đủ ba cột chung này, cộng các cột riêng** trong s
 | growth_zscore | DOUBLE | Từ Intermediate |
 | growth_score | DOUBLE | = growth_zscore |
 
-### 7.5 `gold_value_pillar` — dự kiến
+### 7.5 `gold_value_pillar`
 
 **Input:** grid + int_fcf_yield + int_sbc_ratio. **Làm gì:** gộp hai scores. **Toàn bộ output:** 3 cột chung + 3 cột sau.
 
@@ -520,18 +520,18 @@ Mỗi pillar có **đủ ba cột chung này, cộng các cột riêng** trong s
 
 Value là FCF/dilution blend theo plan. Không dùng AVG bỏ qua NULL để vô tình đổi trọng số khi một factor thiếu.
 
-### 7.6 `gold_quality_pillar` — dự kiến, cần chốt proxy
+### 7.6 `gold_quality_pillar` — earnings-growth proxy MVP v1
 
-**Input:** grid + int_earnings_surprise. **Làm gì dự kiến:** alias earnings-growth z-score sang quality_score. **Toàn bộ output:** 3 cột chung + 2 cột sau.
+**Input:** grid + int_earnings_surprise. **Làm gì:** alias earnings-growth z-score sang quality_score. **Toàn bộ output:** 3 cột chung + 2 cột sau.
 
 | Cột riêng | Kiểu dự kiến | Cách ra |
 | --- | --- | --- |
 | earnings_surprise_zscore | DOUBLE | Proxy output hiện tại |
-| quality_score | DOUBLE | = earnings_surprise_zscore nếu chấp nhận proxy này |
+| quality_score | DOUBLE | = earnings_surprise_zscore; proxy MVP đã chốt |
 
-Earnings growth không trực tiếp đo quality kiểu profitability/stability và không phải SUE chuẩn. Chọn giữ MVP với nhãn proxy rõ ràng hoặc thay factor trước khi triển khai; đây là quyết định domain còn mở.
+Định nghĩa đã chốt: `(NI_quý - NI_quý_cùng_kỳ_năm_trước) / abs(NI_quý_cùng_kỳ_năm_trước)`, sector-normalized và clip [-3, 3]. Thiếu input hoặc mẫu số 0 giữ NULL. Definition ID: `quarterly_net_income_yoy_growth_proxy_v1`. Giữ legacy earnings_surprise names; proxy này không đo analyst surprise, profitability/stability hay SUE chuẩn.
 
-### 7.7 `gold_compose_score` — dự kiến
+### 7.7 `gold_compose_score`
 
 **Input:** grid LEFT JOIN 4 pillars bằng ticker + rebalance_date. **Làm gì:** bảng scoring phẳng, giữ provenance/coverage/eligibility.
 
@@ -644,7 +644,7 @@ dbt build --select gold --vars '{allow_observed_universe: true}'
 dbt build --select +int_growth_ratio +int_fcf_yield +int_sbc_ratio +int_earnings_surprise +int_momentum_ratio --vars '{allow_observed_universe: true}'
 ```
 
-`+` phía trước chọn upstream dependencies gồm seed/snapshot. Sau khi Gold có code, theo naming đề xuất có thể chọn `+gold_compose_score` để build nhánh composite.
+`+` phía trước chọn upstream dependencies gồm seed/snapshot. Chọn `+gold_compose_score` để build toàn nhánh composite và tự xuất coverage sau Gold.
 
 ### Airflow hiện điều phối gì?
 
@@ -654,9 +654,10 @@ dbt build --select +int_growth_ratio +int_fcf_yield +int_sbc_ratio +int_earnings
 | dbt_run_bronze | dbt run Bronze |
 | dbt_run_silver | Seed history → snapshot membership → dbt run Staging/Silver |
 | dbt_run_intermediate | dbt build Intermediate với param allow_observed_universe |
+| dbt_build_gold | dbt build 5 bảng Gold và tests; hook tự xuất coverage |
 | dbt_test_quality_gates | dbt test toàn project với cùng param |
 
-Transformation mặc định allow_observed_universe=false. Muốn nghiên cứu archive cần trigger transformation với param true. Ingestion DAG hiện chưa truyền param này khi trigger. Gold chưa nằm trong DAG; thêm task sau khi models/tests xong.
+Hai DAG mặc định allow_observed_universe=false. Muốn nghiên cứu archive, trigger với Boolean true; ingestion truyền flag sang transformation và đợi kết quả DAG con. Flow là Bronze → Silver → Intermediate → Gold/coverage → quality gates. Các task truy cập warehouse dùng pool duckdb_access 1 slot; xem [runtime guide](gold-runtime-guide.md).
 
 ### Các quality gates đang có
 
@@ -707,15 +708,16 @@ GROUP BY 1 ORDER BY 1;
 
 - [ ] Audit/bổ sung CIK, giá, sector của ticker lịch sử; ghi lý do exclusion.
 - [ ] Đối chiếu vài issuer với facts gốc, shares/split/market cap.
-- [ ] Chốt earnings-growth proxy cho Quality MVP hoặc thay factor.
-- [ ] Chốt naming Gold theo files hiện có hoặc rename refs/docs cùng lúc.
-- [ ] Viết Momentum, Growth và Value pillars; giữ grid/NULL.
-- [ ] Viết Quality theo định nghĩa đã chốt.
-- [ ] Viết composite LEFT JOIN 4 pillars; giữ membership/identifier provenance.
-- [ ] Thêm dbt/models/gold/schema.yml và uniqueness ticker–rebalance.
-- [ ] Test Value cần cả FCF/SBC; composite cần cả 4 scores và khớp trọng số 0.25.
+- [x] Chốt earnings-growth proxy cho Quality MVP v1.
+- [x] Chốt naming Gold; Momentum dùng gold_momentum_pillar.
+- [x] Viết Momentum, Growth và Value pillars; giữ grid/NULL.
+- [x] Viết Quality theo định nghĩa đã chốt.
+- [x] Viết composite LEFT JOIN 4 pillars; giữ membership/identifier provenance.
+- [x] Thêm dbt/models/gold/schema.yml và uniqueness ticker–rebalance.
+- [x] Test Value cần cả FCF/SBC; composite cần cả 4 scores và khớp trọng số 0.25.
+- [x] Coverage tự động theo kỳ/ngành và input diagnostics sau full Gold build.
 - [ ] Audit coverage, phân phối/top-bottom và tương quan pillars.
-- [ ] Thêm Gold task vào DAG, cập nhật README.
+- [x] Thêm Gold task vào DAG, truyền research flag và cập nhật README.
 - [ ] Khi bảng scoring ổn: backtest forward returns, quintiles, IC, turnover, costs, benchmark; sau đó dashboard.
 
 Checkpoint cuối Gold: monthly scoring đầy đủ keys/provenance/4 pillar scores/composite/eligibility, chạy lặp lại từ raw bằng build có gates.

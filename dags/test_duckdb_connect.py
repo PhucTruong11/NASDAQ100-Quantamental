@@ -60,5 +60,6 @@ with DAG(
     
     task_check_duckdb = PythonOperator(
         task_id='task_query_duckdb_warehouse',
+        pool='duckdb_access',
         python_callable=query_duckdb_warehouse,
     )

@@ -30,6 +30,7 @@ models:
         tests: [not_null]
   
   - name: int_earnings_surprise
+    description: "Legacy name for quarterly net-income YoY growth proxy, not analyst surprise or standardized SUE. Feeds MVP Quality v1."
     columns:
       - name: "rebalance_date"
         tests: [not_null]
