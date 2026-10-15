@@ -12,6 +12,7 @@ x-airflow-env: &airflow-env
   AIRFLOW__CORE__LOAD_EXAMPLES: "false"
   AIRFLOW__WEBSERVER__SECRET_KEY: "quant_airflow_secret_key_12345"
   PYTHONPATH: "/opt/airflow"
+  DBT_PARTIAL_PARSE: "false"
   _PIP_ADDITIONAL_REQUIREMENTS: "duckdb==1.1.0 dbt-duckdb polars yfinance"
 
 x-airflow-common: &airflow-common
