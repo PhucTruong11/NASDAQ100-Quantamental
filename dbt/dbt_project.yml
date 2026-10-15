@@ -4,6 +4,9 @@ config-version: 2
 
 profile: 'nasdaq_quantamental'
 
+flags:
+  partial_parse: false
+
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
@@ -17,10 +20,15 @@ clean-targets:
 
 models:
   nasdaq_quantamental:
-    # Cấu hình materialize mặc định cho từng layer (Section 4)
+    # Cấu hình materialize mặc định cho từng layer
     bronze:
       +materialized: table
+    staging:
+      +materialized: view
     silver:
       +materialized: table
-    # gold:   # bật lại khi có models/gold
-    #   +materialized: table
+    intermediate:
+      +materialized: table
+    gold:
+      +materialized: table
+
