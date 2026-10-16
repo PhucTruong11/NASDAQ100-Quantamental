@@ -44,7 +44,13 @@ class YahooAdapter:
     def save_to_parquet(self, df: pl.DataFrame, ticker: str) -> Path:
         # Ghi trực tiếp ra file Parquet y hệt bên EDGAR
         output_path = self.output_dir / f"price_{ticker}.parquet"
-        df.write_parquet(output_path)
+        if output_path.exists():
+            previous = pl.read_parquet(output_path)
+            if not previous.is_empty() and set(previous['Date']) - set(df['Date']):
+                raise ValueError(f'History truncation for {ticker}; keep the old file and review provider/corporate actions')
+        temporary = output_path.with_suffix('.parquet.tmp')
+        df.write_parquet(temporary)
+        temporary.replace(output_path)
         return output_path
         
     def run(self, ticker: str):

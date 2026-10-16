@@ -18,7 +18,7 @@ models:
         tests:
           - accepted_values:
               arguments:
-                values: ["10-K", "10-Q"]
+                values: ["10-K", "10-Q", "20-F", "40-F"]
   - name: stg_sector
     columns:
       - name: ticker

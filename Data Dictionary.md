@@ -105,9 +105,9 @@ Bronze giữ grain của file đã được ingestion parse, không phải toàn
 
 Ý nghĩa từng cột được giải thích đầy đủ ở Bronze bên dưới. Tên raw giữ nguyên sang Bronze, trừ sector đổi sang PascalCase. Dtype raw khác dtype DuckDB sau cast, ví dụ fy Int64 → INTEGER.
 
-EDGAR chỉ giữ 11 tags: Assets, Liabilities, NetIncomeLoss, Revenues, EarningsPerShareBasic, CommonStockSharesOutstanding, NetCashProvidedByUsedInOperatingActivities, PaymentsToAcquirePropertyPlantAndEquipment, ShareBasedCompensation, RevenueFromContractWithCustomerExcludingAssessedTax, SalesRevenueNet. Ingestion chỉ đọc taxonomy us-gaap và form 10-K/10-Q; forms/tags khác không tự được hỗ trợ.
+EDGAR giữ 11 tags nền: Assets, Liabilities, NetIncomeLoss, Revenues, EarningsPerShareBasic, CommonStockSharesOutstanding, NetCashProvidedByUsedInOperatingActivities, PaymentsToAcquirePropertyPlantAndEquipment, ShareBasedCompensation, RevenueFromContractWithCustomerExcludingAssessedTax, SalesRevenueNet. Adapter bổ sung dei:EntityCommonStockSharesOutstanding, cho phép 20-F/40-F và giữ thêm bốn concepts để chẩn đoán (productive assets, tax-inclusive revenue, continuing-operations OCF, allocated SBC). Các concepts chẩn đoán không được alias ngầm; IFRS/currency conversion vẫn ngoài scope.
 
-Giá/facts ghi đè theo ticker/CIK; sector ghi file tạm rồi replace. Metadata `data/raw/.watermarks/<TICKER>.json` có `last_updated` dạng chuỗi ngày, chỉ đánh dấu khi cả giá và EDGAR thành công; đây không phải bảng phân tích.
+Giá/facts ghi atomic theo ticker/CIK; giá từ chối làm rơi ngày lịch sử đã có. Sector merge giữ ticker lịch sử rồi atomic replace. Metadata `data/raw/.watermarks/<TICKER>.json` có `last_updated` dạng chuỗi ngày, chỉ đánh dấu khi cả giá và EDGAR thành công; đây không phải bảng phân tích.
 
 ### 2.3 `universe_membership_history` — seed table
 
@@ -121,7 +121,7 @@ Giá/facts ghi đè theo ticker/CIK; sector ghi file tạm rồi replace. Metada
 | `valid_from` | `DATE` | Ngày bắt đầu window, inclusive. |
 | `valid_to` | `DATE` | Ngày kết thúc, exclusive; CSV import yêu cầu có giá trị. |
 | `membership_quality` | `VARCHAR` | Seed nhận effective (ngày hiệu lực có nguồn xác minh) hoặc monthly_observation (archive). |
-| `identifier_quality` | `VARCHAR` | Nguồn/chất lượng mapping CIK; seed hiện có current_mapping và unmapped. |
+| `identifier_quality` | `VARCHAR` | Nguồn/chất lượng mapping CIK; seed dùng current_mapping/sec_filing_crosscheck; unmapped biểu diễn CIK chưa giải quyết. Registry nguồn ở config/historical_identifiers.csv. |
 | `source_url` | `VARCHAR` | URL provenance; archive gắn với commit nguồn. |
 
 Seed hiện có archive từ 31/07/2023. Downloader dùng phiên bản commit đầu tiên, ngày công bố + 1 ngày, carry-forward tối đa 40 ngày. Tên thư mục tháng không tự thành ngày hiệu lực. Seed không tự bổ sung giá/CIK/sector của ticker lịch sử. **Checkpoint Raw:** kiểm tra files, schema, freshness và fetch failures; file tồn tại chưa bảo đảm dữ liệu đủ.
@@ -157,7 +157,7 @@ Cả 4 models đều `table`. `safe_cast = TRY_CAST` nên cast lỗi thành NULL
 | `tag` | `VARCHAR` | XBRL tag giữ case nguồn. |
 | `value` | `DOUBLE` | Giá trị chỉ tiêu, chưa tính ratio. |
 | `unit` | `VARCHAR` | Đơn vị nguồn: USD, shares, USD/shares… |
-| `form` | `VARCHAR` | Loại filing; ingestion hiện chỉ giữ 10-K/10-Q. |
+| `form` | `VARCHAR` | Loại filing; ingestion cho phép 10-K/10-Q/20-F/40-F, giữ taxonomy và unit. |
 | `fy` | `INTEGER` | Năm tài chính của filing. |
 | `fp` | `VARCHAR` | Kỳ của filing; FY không chứng minh fact là annual. |
 | `period_start` | `DATE` | Ngày đầu kỳ thực tế; NULL với instant fact. |
@@ -209,7 +209,7 @@ Cả 3 models đều `view`: query trên Bronze, chưa persist một bộ data r
 
 ### 4.2 `stg_fundamentals`
 
-**Input:** bronze_company_facts. **Grain:** reported fact, còn có thể trùng kỳ. **Làm gì:** rename, form filter 10-K/10-Q, tag chỉ trim, unit/form upper. **Output:** input dedup ở Silver.
+**Input:** bronze_company_facts. **Grain:** reported fact, còn có thể trùng kỳ. **Làm gì:** rename, form filter 10-K/10-Q/20-F/40-F, tag chỉ trim, unit/form upper. **Output:** input dedup ở Silver.
 
 | Cột đầu ra | Kiểu DuckDB | Ý nghĩa / nguồn |
 | --- | --- | --- |
@@ -217,7 +217,7 @@ Cả 3 models đều `view`: query trên Bronze, chưa persist một bộ data r
 | `metric_tag` | `VARCHAR` | XBRL tag giữ case, ví dụ NetIncomeLoss. |
 | `metric_value` | `DOUBLE` | Giá trị của chỉ tiêu; ở Silver là bản first-reported. |
 | `unit_of_measure` | `VARCHAR` | Đơn vị upper/trim: USD, SHARES, USD/SHARES… Không tự quy đổi currency. |
-| `filing_type` | `VARCHAR` | Loại filing: 10-K/10-Q trong scope hiện tại. |
+| `filing_type` | `VARCHAR` | Loại filing: 10-K/10-Q/20-F/40-F; form không tự chứng minh annual. |
 | `fiscal_year` | `INTEGER` | Năm tài chính của filing; không thay thế ngày của fact. |
 | `fiscal_period` | `VARCHAR` | Kỳ của filing; FY không chứng minh fact là số cả năm. |
 | `period_start_date` | `DATE` | Ngày bắt đầu kỳ thực tế; NULL với instant fact. |
@@ -248,7 +248,7 @@ Cả 3 models đều `view`: query trên Bronze, chưa persist một bộ data r
 | `metric_tag` | `VARCHAR` | XBRL tag giữ case, ví dụ NetIncomeLoss. |
 | `metric_value` | `DOUBLE` | Giá trị của chỉ tiêu; ở Silver là bản first-reported. |
 | `unit_of_measure` | `VARCHAR` | Đơn vị upper/trim: USD, SHARES, USD/SHARES… Không tự quy đổi currency. |
-| `filing_type` | `VARCHAR` | Loại filing: 10-K/10-Q trong scope hiện tại. |
+| `filing_type` | `VARCHAR` | Loại filing: 10-K/10-Q/20-F/40-F; form không tự chứng minh annual. |
 | `fiscal_year` | `INTEGER` | Năm tài chính của filing; không thay thế ngày của fact. |
 | `fiscal_period` | `VARCHAR` | Kỳ của filing; FY không chứng minh fact là số cả năm. |
 | `period_start_date` | `DATE` | Ngày bắt đầu kỳ thực tế; NULL với instant fact. |
@@ -269,7 +269,7 @@ available_date = filing_date + 1 ngày lịch vì schema chưa có acceptance ti
 | `metric_tag` | `VARCHAR` | XBRL tag giữ case, ví dụ NetIncomeLoss. |
 | `metric_value` | `DOUBLE` | Giá trị của chỉ tiêu; ở Silver là bản first-reported. |
 | `unit_of_measure` | `VARCHAR` | Đơn vị upper/trim: USD, SHARES, USD/SHARES… Không tự quy đổi currency. |
-| `filing_type` | `VARCHAR` | Loại filing: 10-K/10-Q trong scope hiện tại. |
+| `filing_type` | `VARCHAR` | Loại filing: 10-K/10-Q/20-F/40-F; form không tự chứng minh annual. |
 | `fiscal_year` | `INTEGER` | Năm tài chính của filing; không thay thế ngày của fact. |
 | `fiscal_period` | `VARCHAR` | Kỳ của filing; FY không chứng minh fact là số cả năm. |
 | `period_start_date` | `DATE` | Ngày bắt đầu kỳ thực tế; NULL với instant fact. |
@@ -325,7 +325,7 @@ Snapshot hôm nay không khôi phục membership từ 2010; nó ghi thay đổi 
 | `valid_from` | `TIMESTAMP` | Bắt đầu window inclusive; seed DATE được cast sang TIMESTAMP. |
 | `valid_to` | `TIMESTAMP` | Kết thúc exclusive; NULL được phép với live version còn mở. |
 | `membership_quality` | `VARCHAR` | effective / monthly_observation / live_observation: chất lượng membership. |
-| `identifier_quality` | `VARCHAR` | Nguồn/chất lượng mapping CIK; seed hiện có current_mapping và unmapped. |
+| `identifier_quality` | `VARCHAR` | Nguồn/chất lượng mapping CIK; seed dùng current_mapping/sec_filing_crosscheck; unmapped biểu diễn CIK chưa giải quyết. Registry nguồn ở config/historical_identifiers.csv. |
 | `source_url` | `VARCHAR` | URL provenance; archive gắn với commit nguồn. |
 
 Tên PIT mô tả window join; độ chính xác phụ thuộc membership_quality. effective khác monthly/live observations. Strict mode mặc định chỉ nhận effective. **Checkpoint Silver:** dedup key đúng, annual đúng duration/unit, availability có lag, giá dương, windows không overlap. Test giá Yahoo chọn lệch > 0.5%; cấu hình hiện WARN khi có mismatch và ERROR khi mismatch > 500 dòng, không phải mỗi mismatch đều fail.
@@ -344,7 +344,7 @@ Cả 6 models đều `table`. Grain/key mục tiêu chung: **ticker × rebalance
 | `ticker` | `VARCHAR` | Ticker giao dịch; issuer được nhận diện qua CIK. |
 | `cik` | `VARCHAR` | CIK của SEC, lưu dạng chuỗi; có thể NULL khi mapping lịch sử chưa có. |
 | `membership_quality` | `VARCHAR` | effective / monthly_observation / live_observation: chất lượng membership. |
-| `identifier_quality` | `VARCHAR` | Nguồn/chất lượng mapping CIK; seed hiện có current_mapping và unmapped. |
+| `identifier_quality` | `VARCHAR` | Nguồn/chất lượng mapping CIK; seed dùng current_mapping/sec_filing_crosscheck; unmapped biểu diễn CIK chưa giải quyết. Registry nguồn ở config/historical_identifiers.csv. |
 | `membership_valid_from` | `TIMESTAMP` | valid_from từ Silver, audit membership join. |
 | `membership_valid_to` | `TIMESTAMP` | valid_to từ Silver; có thể NULL. |
 | `sector` | `VARCHAR` | Sector hiện tại từ Yahoo, được upper/trim; có thể NULL với ticker lịch sử. |
@@ -403,9 +403,10 @@ Ngày max trong dữ liệu là ngày chọn rebalance, không tự chứng minh
 | `period_end_date` | `DATE` | Ngày cuối kỳ thực tế hoặc ngày đo instant fact. |
 | `ocf_available_date` | `DATE` | Availability OCF. |
 | `capex_available_date` | `DATE` | Availability Capex cùng kỳ. |
-| `reported_shares_outstanding` | `DOUBLE` | Instant CommonStockSharesOutstanding gốc, unit SHARES, > 0. |
+| `reported_shares_outstanding` | `DOUBLE` | Instant CommonStockSharesOutstanding hoặc dei:EntityCommonStockSharesOutstanding, unit SHARES, > 0. |
 | `shares_measurement_date` | `DATE` | Ngày đo shares, từ period_end_date của instant fact. |
 | `shares_available_date` | `DATE` | Availability shares fact. |
+| `shares_source_tag` | `VARCHAR` | Concept gốc của instant shares, giữ namespace DEI. |
 | `shares_split_factor` | `DOUBLE` | Tích splits sau shares_measurement_date đến rebalance; không có split dùng 1. |
 | `issuer_ticker_count` | `BIGINT` | Số ticker cùng CIK trong grid kỳ đó; chỉ tính market cap khi = 1. |
 | `free_cash_flow` | `DOUBLE` | OCF − abs(Capex); thiếu Capex → NULL, reported zero giữ 0. |
@@ -445,10 +446,15 @@ Shares là proxy báo cáo đã biết; chưa tính issuance/buyback chưa công
 | `sector` | `VARCHAR` | Sector hiện tại từ Yahoo, được upper/trim; có thể NULL với ticker lịch sử. |
 | `ni_curr` | `DOUBLE` | Net Income USD quý gần nhất đã available. |
 | `ni_prev` | `DOUBLE` | Net Income USD quý tương ứng khoảng một năm trước. |
+| `period_start_curr` | `DATE` | Ngày bắt đầu quý hiện tại được chọn. |
+| `period_end_curr` | `DATE` | Ngày kết thúc quý hiện tại; dùng kiểm tra tuổi input. |
+| `period_end_prev` | `DATE` | Ngày kết thúc quý so sánh năm trước. |
+| `current_income_available_date` | `DATE` | Availability fact NI hiện tại. |
+| `previous_income_available_date` | `DATE` | Availability fact NI so sánh. |
 | `earnings_surprise_raw` | `DOUBLE` | Quarterly earnings growth YoY, decimal; denominator 0 → NULL. |
 | `earnings_surprise_zscore` | `DOUBLE` | Z-score của earnings-growth proxy. |
 
-Đây không phải SUE chuẩn có stddev của earnings changes ở mẫu số. Output chưa giữ period/availability dates hai quý, dù CTE dùng chúng để chọn. Code chưa dựng Q4 từ annual − YTD nếu nguồn thiếu fact duration quý riêng. Gold đã chốt dùng factor này làm earnings-growth proxy MVP v1; xem mục 7.6.
+Đây không phải SUE chuẩn có stddev của earnings changes ở mẫu số. Output đã giữ period_start_curr, period_end_curr, period_end_prev và current/previous_income_available_date để audit tuổi input và PIT. Code chưa dựng Q4 từ annual − YTD nếu nguồn thiếu fact duration quý riêng. Gold đã chốt dùng factor này làm earnings-growth proxy MVP v1; xem mục 7.6.
 
 ### 6.7 Chuẩn hóa score dùng chung
 
@@ -703,6 +709,8 @@ LEFT JOIN int_sbc_ratio s USING (ticker, rebalance_date)
 LEFT JOIN int_earnings_surprise e USING (ticker, rebalance_date)
 GROUP BY 1 ORDER BY 1;
 ```
+
+Xem [backtest-data-quality.md](backtest-data-quality.md) cho age limits áp dụng trước z-score và audit sau Gold.
 
 ## 9. Checklist triển khai Gold
 

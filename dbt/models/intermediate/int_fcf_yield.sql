@@ -11,6 +11,7 @@ WITH components AS (
         shares.metric_value AS reported_shares_outstanding,
         shares.period_end_date AS shares_measurement_date,
         shares.available_date AS shares_available_date,
+        shares.metric_tag AS shares_source_tag,
         COALESCE(splits.split_factor, 1.0) AS shares_split_factor,
         -- CIK-level shares cannot value an individual class (e.g. GOOG/GOOGL).
         (SELECT COUNT(DISTINCT other.ticker)
@@ -24,6 +25,7 @@ WITH components AS (
         WHERE f.cik = u.cik AND f.metric_tag = 'NetCashProvidedByUsedInOperatingActivities'
           AND f.available_date <= u.rebalance_date
           AND f.period_end_date <= u.rebalance_date
+          AND DATE_DIFF('day', f.period_end_date, u.rebalance_date) <= {{ var('max_annual_age_days', 550) | int }}
         ORDER BY f.period_end_date DESC, f.available_date DESC, f.period_start_date DESC LIMIT 1
     ) ocf ON TRUE
     LEFT JOIN LATERAL (
@@ -36,12 +38,16 @@ WITH components AS (
     ) capex ON TRUE
     LEFT JOIN LATERAL (
         SELECT f.* FROM {{ ref('silver_fundamentals_pit') }} f
-        WHERE f.cik = u.cik AND f.metric_tag = 'CommonStockSharesOutstanding'
+        WHERE f.cik = u.cik
+          AND f.metric_tag IN ('CommonStockSharesOutstanding', 'dei:EntityCommonStockSharesOutstanding')
           AND f.unit_of_measure = 'SHARES' AND f.period_start_date IS NULL
           AND f.metric_value > 0
           AND f.available_date <= u.rebalance_date
           AND f.period_end_date <= u.rebalance_date
-        ORDER BY f.period_end_date DESC, f.available_date DESC LIMIT 1
+          AND DATE_DIFF('day', f.period_end_date, u.rebalance_date) <= {{ var('max_shares_age_days', 400) | int }}
+        ORDER BY f.period_end_date DESC, f.available_date DESC,
+                 CASE WHEN f.metric_tag = 'CommonStockSharesOutstanding' THEN 0 ELSE 1 END
+        LIMIT 1
     ) shares ON TRUE
     LEFT JOIN LATERAL (
         SELECT EXP(SUM(LN(h.split_ratio))) AS split_factor

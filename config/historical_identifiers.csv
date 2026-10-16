@@ -1,0 +1,25 @@
+ticker,cik,company,valid_from,valid_to,source_url,identifier_quality
+ALGN,1097149,ALIGN TECHNOLOGY INC,2023-07-31,2024-01-02,https://data.sec.gov/submissions/CIK0001097149.json,sec_filing_crosscheck
+ANSS,1013462,ANSYS INC,2023-07-31,2025-09-02,https://data.sec.gov/submissions/CIK0001013462.json,sec_filing_crosscheck
+AZN,901832,ASTRAZENECA PLC,2023-07-31,2026-02-02,https://data.sec.gov/submissions/CIK0000901832.json,sec_filing_crosscheck
+BIIB,875045,BIOGEN INC.,2023-07-31,2026-02-02,https://data.sec.gov/submissions/CIK0000875045.json,sec_filing_crosscheck
+CDW,1402057,CDW Corp,2024-01-02,2026-02-02,https://data.sec.gov/submissions/CIK0001402057.json,sec_filing_crosscheck
+DLTR,935703,"DOLLAR TREE, INC.",2023-07-31,2024-12-02,https://data.sec.gov/submissions/CIK0000935703.json,sec_filing_crosscheck
+EA,712515,ELECTRONIC ARTS INC.,2023-07-31,2026-10-16,https://data.sec.gov/submissions/CIK0000712515.json,sec_filing_crosscheck
+EBAY,1065088,EBAY INC,2023-07-31,2024-01-02,https://data.sec.gov/submissions/CIK0001065088.json,sec_filing_crosscheck
+ENPH,1463101,"Enphase Energy, Inc.",2023-07-31,2024-01-02,https://data.sec.gov/submissions/CIK0001463101.json,sec_filing_crosscheck
+GFS,1709048,GLOBALFOUNDRIES Inc.,2023-07-31,2026-02-02,https://data.sec.gov/submissions/CIK0001709048.json,sec_filing_crosscheck
+ILMN,1110803,"ILLUMINA, INC.",2023-07-31,2025-01-02,https://data.sec.gov/submissions/CIK0001110803.json,sec_filing_crosscheck
+JD,1549802,"JD.com, Inc.",2023-07-31,2024-01-02,https://data.sec.gov/submissions/CIK0001549802.json,sec_filing_crosscheck
+LCID,1811210,"Lucid Group, Inc.",2023-07-31,2024-01-02,https://data.sec.gov/submissions/CIK0001811210.json,sec_filing_crosscheck
+LULU,1397187,lululemon athletica inc.,2023-07-31,2026-02-02,https://data.sec.gov/submissions/CIK0001397187.json,sec_filing_crosscheck
+MDB,1441816,"MongoDB, Inc.",2024-01-02,2025-09-02,https://data.sec.gov/submissions/CIK0001441816.json,sec_filing_crosscheck
+MRNA,1682852,"Moderna, Inc.",2023-07-31,2025-01-02,https://data.sec.gov/submissions/CIK0001682852.json,sec_filing_crosscheck
+ON,1097864,ON SEMICONDUCTOR CORP,2023-07-31,2026-02-02,https://data.sec.gov/submissions/CIK0001097864.json,sec_filing_crosscheck
+SGEN,1060736,Seagen Inc.,2023-07-31,2024-01-02,https://data.sec.gov/submissions/CIK0001060736.json,sec_filing_crosscheck
+SIRI,908937,SIRIUS XM HOLDINGS INC.,2023-07-31,2024-09-02,https://data.sec.gov/submissions/CIK0000908937.json,sec_filing_crosscheck
+SMCI,1375365,"Super Micro Computer, Inc.",2024-09-02,2025-01-02,https://data.sec.gov/submissions/CIK0001375365.json,sec_filing_crosscheck
+SPLK,1353283,SPLUNK INC,2024-01-02,2024-04-02,https://data.sec.gov/submissions/CIK0001353283.json,sec_filing_crosscheck
+TTD,1671933,"Trade Desk, Inc.",2023-07-31,2026-02-02,https://data.sec.gov/submissions/CIK0001671933.json,sec_filing_crosscheck
+WBA,1618921,"Walgreens Boots Alliance, Inc.",2023-07-31,2024-09-02,https://data.sec.gov/submissions/CIK0001618921.json,sec_filing_crosscheck
+ZM,1585521,"Zoom Communications, Inc.",2023-07-31,2024-01-02,https://data.sec.gov/submissions/CIK0001585521.json,sec_filing_crosscheck

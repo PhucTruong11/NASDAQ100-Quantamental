@@ -22,7 +22,7 @@ DBT_VARS = ' --vars "$QUANT_DBT_VARS"'
 with DAG(
     dag_id='dbt_transformation_pipeline',
     default_args=default_args,
-    description='Bronze -> Silver -> Intermediate -> Gold/coverage -> Quality gates',
+    description='Bronze -> Silver -> Intermediate -> Gold/coverage -> Quality gates -> Input audit',
     schedule_interval=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
@@ -68,4 +68,9 @@ with DAG(
         bash_command=f"{DBT_BASE_CMD} && dbt build --select gold --no-partial-parse" + DBT_VARS,
     )
 
-    task_dbt_bronze >> task_dbt_silver >> task_dbt_intermediate >> task_dbt_gold >> task_dbt_test
+    task_audit_inputs = BashOperator(
+        task_id='audit_backtest_inputs',
+        bash_command='cd /opt/airflow && python -m research.backtest_quality',
+    )
+
+    task_dbt_bronze >> task_dbt_silver >> task_dbt_intermediate >> task_dbt_gold >> task_dbt_test >> task_audit_inputs

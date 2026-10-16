@@ -29,7 +29,7 @@ Dự án tuân thủ nghiêm ngặt **Kiến trúc Medallion** với luồng x�
     *   **Staging:** Đổi tên, làm sạch kiểu dữ liệu.
     *   **Silver:** Xử lý SCD2 (Universe Membership) và Point-in-Time Join.
     *   **Intermediate:** Tính Ratios, Winsorize, Sector-neutral Z-score.
-    *   **Gold:** Gộp thành các Factor Pillars (Growth, Value, Quality proxy, Momentum) $\rightarrow$ Equal-weight Composite Score. Quality MVP là tăng trưởng Net Income quý YoY. [Hướng dẫn chạy Gold, tests, coverage và research mode](gold-runtime-guide.md).
+    *   **Gold:** Gộp thành các Factor Pillars (Growth, Value, Quality proxy, Momentum) $\rightarrow$ Equal-weight Composite Score. Quality MVP là tăng trưởng Net Income quý YoY. [Hướng dẫn chạy Gold, tests, coverage và research mode](gold-runtime-guide.md). [Audit chất lượng dữ liệu và policy mẫu backtest](backtest-data-quality.md).
     *   **OBT (One Big Table):** Cung cấp data phẳng cho Streamlit và module Backtest.
 
 *(Xem chi tiết tại [architecture.md](architecture.md) và [data-flow.md](data-flow.md))*
@@ -52,6 +52,14 @@ docker compose up -d
 
 # Truy cập Airflow UI tại: http://localhost:8080 (admin/admin)
 ```
+
+**3. Mở dashboard Gold local:**
+```powershell
+python -m pip install -r requirements-dashboard.txt
+python -m streamlit run app/streamlit_app.py --server.port 8501
+```
+
+Truy cập [Streamlit](http://127.0.0.1:8501). Research desk đọc snapshot sau bước audit của DAG, gồm tổng quan coverage, screener có thay đổi thứ hạng, phân tích tương quan factor, hồ sơ/so sánh 2–4 mã và chẩn đoán dữ liệu. Màn hình Backtest đã có khung, chờ kết quả được kiểm chứng. Nếu chưa có snapshot, chạy `python -m research.backtest_quality` sau khi Gold/tests đã thành công. [Hướng dẫn sáu màn hình và bước nối backtest](dashboard-guide.md).
 
 ## Giới hạn đã biết (Known Limitations)
 Quy ước đang triển khai và lệnh kiểm chứng nằm tại [semantics-and-universe.md](semantics-and-universe.md). Fundamentals chọn annual USD theo duration 330–400 ngày, ghép cùng kỳ, dùng filing date + 1 ngày; FCF giữ NULL khi thiếu Capex và dùng giá/shares cùng cơ sở split.

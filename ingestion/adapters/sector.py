@@ -92,6 +92,11 @@ class SectorAdapter:
     def save_to_parquet(self, df: pl.DataFrame) -> Path:
         # Ghi đè sector.parquet mỗi lần chạy. Ghi ra file tạm rồi replace để không để lại file hỏng nửa chừng.
         output_path = self.output_dir / self.OUTPUT_FILE
+        # Refreshing current members must not delete sectors of removed members.
+        if output_path.exists():
+            previous = pl.read_parquet(output_path).select(list(self.SCHEMA))
+            df = pl.concat([previous, df], how='vertical_relaxed').unique(subset='ticker', keep='last')
+        df = df.sort('ticker')
         tmp_path = output_path.with_suffix(".parquet.tmp")
         df.write_parquet(tmp_path)
         os.replace(tmp_path, output_path)
@@ -105,6 +110,8 @@ class SectorAdapter:
         """
         logger.info(f"Bắt đầu lấy sector cho {len(tickers)} ticker...")
         self.failed_tickers = []
+        self.last_write_succeeded = False
+        self.last_fetched_count = 0
         try:
             if not tickers:
                 logger.warning("Danh sách ticker rỗng, không có gì để lấy sector")
@@ -122,6 +129,8 @@ class SectorAdapter:
                 return False
 
             out_path = self.save_to_parquet(df)
+            self.last_write_succeeded = True
+            self.last_fetched_count = df.height
             if self.failed_tickers:
                 logger.warning(
                     f"Đã lưu {out_path} (Shape: {df.shape}) nhưng thiếu {len(self.failed_tickers)} ticker: {self.failed_tickers}"

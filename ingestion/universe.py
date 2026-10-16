@@ -3,6 +3,8 @@ import requests
 import polars as pl
 from typing import List, Dict, Optional
 from pathlib import Path
+from datetime import date
+from ingestion.identifiers import lookup_identifier, load_identifiers
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ class NasdaqUniverse:
         logger.info("Đang lấy danh sách CIK từ SEC...")
         
         headers = {"User-Agent": self.user_agent}
-        response = requests.get(self.SEC_TICKER_URL, headers=headers)
+        response = requests.get(self.SEC_TICKER_URL, headers=headers, timeout=30)
         response.raise_for_status()
         
         # SEC trả về dict dạng {'0': {'cik_str': 320193, 'ticker': 'AAPL', 'title': 'Apple Inc.'}, ...}
@@ -31,13 +33,18 @@ class NasdaqUniverse:
         live_tickers = nasdaq_df["Symbol"].to_list()
         
         extracted_data = []
-        for key, info in sec_data.items():
-            if info["ticker"] in live_tickers:
-                extracted_data.append({
-                    "Company": info["title"],
-                    "Ticker": info["ticker"],
-                    "CIK": str(info["cik_str"])
-                })
+        directory = {info['ticker']: info for info in sec_data.values()}
+        reviewed = load_identifiers()
+        # A missing identifier must never erase an index member (left join).
+        for member in nasdaq_df.to_dicts():
+            ticker = member['Symbol'].strip().upper()
+            info = directory.get(ticker)
+            fallback = lookup_identifier(ticker, date.today(), reviewed)
+            extracted_data.append({
+                'Company': info['title'] if info else member['Name'],
+                'Ticker': ticker,
+                'CIK': str(info['cik_str']) if info else (fallback['cik'] if fallback else None),
+            })
                 
         df = pl.DataFrame(extracted_data)
         

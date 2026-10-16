@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import requests
+from ingestion.identifiers import enrich_history
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 FIELDS = ['ticker', 'cik', 'company', 'valid_from', 'valid_to', 'membership_quality',
@@ -124,6 +125,7 @@ def backfill(output, through=None):
                 identifier_quality='current_mapping' if ticker in mapping else 'unmapped', source_url=url))
     if not rows:
         raise ValueError('No usable historical observations; existing seed retained')
+    rows = enrich_history(rows)
     write_history(rows, output)
     logger.info('Saved %d membership observations (%s to %s). Exact effective dates remain unavailable.',
                 len(rows), min(r['valid_from'] for r in rows), max(r['valid_to'] for r in rows))
@@ -135,10 +137,17 @@ def main():
     parser.add_argument('--output', default='dbt/seeds/universe_membership_history.csv')
     parser.add_argument('--through', type=date.fromisoformat)
     parser.add_argument('--import-csv', type=Path)
+    parser.add_argument('--resolve-identifiers', action='store_true',
+                        help='Fill missing historical CIKs from the reviewed registry, preserving membership dates/quality.')
     args = parser.parse_args()
-    if args.import_csv:
+    if args.resolve_identifiers:
+        with Path(args.output).open(encoding='utf-8', newline='') as handle:
+            rows = list(csv.DictReader(handle))
+        write_history(enrich_history(rows), args.output)
+    elif args.import_csv:
         with args.import_csv.open(encoding='utf-8', newline='') as handle:
-            write_history(list(csv.DictReader(handle)), args.output)
+            rows = list(csv.DictReader(handle))
+        write_history(rows, args.output)
     else:
         backfill(args.output, args.through)
 

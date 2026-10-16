@@ -16,6 +16,7 @@ data/raw/
 data/.cache/
 data/reports/gold/*.csv
 data/reports/gold/*.json
+data/reports/backtest_quality/
 
 # dbt
 dbt/target/

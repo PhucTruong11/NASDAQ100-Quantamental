@@ -86,6 +86,11 @@ GROUP BY rebalance_date{% if by_sector %}, sector_label{% endif %}
             '{{ "failed" if state.failed else "passed" }}' AS selected_build_validation,
             {{ state.warnings }} AS warning_test_count,
             'quarterly_net_income_yoy_growth_proxy_v1' AS quality_definition,
+            STRUCT_PACK(
+                annual_flows := {{ var('max_annual_age_days', 550) | int }},
+                instant_shares := {{ var('max_shares_age_days', 400) | int }},
+                quarterly_income := {{ var('max_quarter_age_days', 200) | int }}
+            ) AS input_age_limits_days,
             'coverage_diagnostic_not_backtest_results' AS report_kind,
             (SELECT STRING_AGG(DISTINCT membership_quality, ',') FROM {{ ref('gold_compose_score') }}) AS membership_qualities,
             latest.*

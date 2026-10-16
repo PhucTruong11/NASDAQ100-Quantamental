@@ -1,0 +1,4 @@
+# Serving only; no Airflow, dbt or live ingestion dependencies are needed.
+streamlit==1.63.0
+pandas==3.0.2
+plotly==7.1.0

@@ -21,6 +21,8 @@ x-airflow-common: &airflow-common
   volumes:
     - ./dags:/opt/airflow/dags
     - ./ingestion:/opt/airflow/ingestion
+    - ./config:/opt/airflow/config:ro
+    - ./research:/opt/airflow/research:ro
     - ./dbt:/opt/airflow/dbt
     - ./data:/opt/airflow/data
     - ./data/.cache/pip:/home/airflow/.cache/pip

@@ -1,5 +1,7 @@
 # Roadmap sau Gold — Airflow → Backtest → Streamlit
 
+**Điều chỉnh thứ tự 15/10/2026:** theo lựa chọn hiện tại, đã dựng Streamlit xem Gold/coverage/chất lượng dữ liệu trước. Xem [dashboard-guide.md](dashboard-guide.md) để chạy app và nối snapshot sau audit. Phần performance của dashboard chờ backtest CLI được kiểm chứng. Các mục bên dưới giữ vai trò thiết kế tham khảo; trạng thái triển khai thực tế xem hướng dẫn runtime và dashboard.
+
 Cập nhật **15/10/2026**, dựa trên code trong workspace. Đây là **plan để tự triển khai**, chưa sửa DAG, viết backtest, dựng app hay chạy job. Các tên task/module/output mới bên dưới là đề xuất.
 
 **Mẫu để đọc và viết theo:** [Gold tests — mục 13](#13-mẫu-tests-cần-thêm-sau-gold), [Airflow DAGs — mục 14](#14-mẫu-airflow-để-hình-dung-cách-điều-phối). Code trong các mục này chỉ nằm ở tài liệu, chưa được đưa vào models/tests/dags.
