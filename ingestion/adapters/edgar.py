@@ -41,6 +41,7 @@ class EdgarAdapter:
         self.user_agent = user_agent
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.raw_cache_dir = self.output_dir.parent / 'sec_companyfacts'
         
         self.headers = {
             "User-Agent": self.user_agent,
@@ -61,6 +62,13 @@ class EdgarAdapter:
             "RevenueFromContractWithCustomerExcludingAssessedTax", # Revenue fallback 1
             "SalesRevenueNet"           # Revenue fallback 2
         ]
+        # Retain these distinct concepts for diagnostics, not silent aliases.
+        self.target_tags += [
+            'PaymentsToAcquireProductiveAssets',
+            'RevenueFromContractWithCustomerIncludingAssessedTax',
+            'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations',
+            'AllocatedShareBasedCompensationExpense',
+        ]
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def fetch_company_facts(self, cik: str) -> dict:
@@ -70,31 +78,39 @@ class EdgarAdapter:
         # 2. Xây dựng URL hoàn chỉnh.
         url = f"{self.BASE_URL}/CIK{cik_padded}.json"
         # 3. Gửi GET request với self.headers.
-        response = requests.get(url, headers=self.headers)
+        response = requests.get(url, headers=self.headers, timeout=45)
         
         # 4. Kiểm tra status code (nếu 200 thì trả về json, nếu lỗi thì log và raise Exception).
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        self.raw_cache_dir.mkdir(parents=True, exist_ok=True)
+        path = self.raw_cache_dir / f'CIK{int(cik):010d}.json'
+        temporary = path.with_suffix('.json.tmp')
+        temporary.write_text(response.text, encoding='utf-8')
+        temporary.replace(path)
+        return data
         
 
     def parse_facts(self, raw_data: dict, cik: str) -> pl.DataFrame:
         extracted_data = []
-        us_gaap = raw_data.get("facts", {}).get("us-gaap", {})
-        
-        for tag in self.target_tags:
-            if tag in us_gaap:
-                tag_data = us_gaap[tag]
+        selected = [('us-gaap', tag) for tag in self.target_tags]
+        selected.append(('dei', 'EntityCommonStockSharesOutstanding'))
+        for namespace, tag in selected:
+            namespace_facts = raw_data.get('facts', {}).get(namespace, {})
+            if tag in namespace_facts:
+                tag_data = namespace_facts[tag]
                 units = tag_data.get("units", {})
                 
                 for unit_name, facts in units.items():
                     for fact in facts:
-                        # Chỉ lấy báo cáo năm (10-K) và báo cáo quý (10-Q)
-                        if fact.get("form") in ["10-K", "10-Q"]:
+                        # Annual foreign forms are allowed without changing taxonomy/currency.
+                        if fact.get("form") in ['10-K', '10-Q', '20-F', '40-F']:
                             try:
                                 # Validate bằng Pydantic
                                 validated_fact = EdgarFact(
-                                    cik=cik,
-                                    tag=tag,
+                                    cik=str(int(cik)),
+                                    # Preserve namespace without breaking legacy raw schema.
+                                    tag=tag if namespace == 'us-gaap' else f'{namespace}:{tag}',
                                     value=fact.get("val"),
                                     unit=unit_name,
                                     form=fact.get("form"),
@@ -121,7 +137,7 @@ class EdgarAdapter:
         # pl.col() đại diện cho 1 cột. Ở đây ta cast (ép kiểu) filing_date thành Datetime và value thành Float64
         if not df.is_empty():
             df = df.with_columns(
-                pl.col("filing_date").cast(pl.Date),
+                pl.col("filing_date").str.to_date(),
                 pl.col("value").cast(pl.Float64)
             )
         return df   
@@ -129,7 +145,9 @@ class EdgarAdapter:
     def save_to_parquet(self, df: pl.DataFrame, cik: str) -> Path:
         output_path = self.output_dir / f"edgar_{cik}.parquet"
         # Ghi trực tiếp ra parquet
-        df.write_parquet(output_path)
+        temporary = output_path.with_suffix('.parquet.tmp')
+        df.write_parquet(temporary)
+        temporary.replace(output_path)
         return output_path
 
     def run(self, cik: str):

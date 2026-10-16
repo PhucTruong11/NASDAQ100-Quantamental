@@ -47,8 +47,12 @@ def fetch_sector():
     print(f"--> Bắt đầu cập nhật ngành GICS cho {len(tickers)} tickers...")
     
     sector_adapter = SectorAdapter(output_dir="/opt/airflow/data/raw/sector")
-    if not sector_adapter.run(tickers):
-        raise RuntimeError('Sector refresh incomplete; do not accept an old file as a successful refresh.')
+    complete = sector_adapter.run(tickers)
+    if not complete and not sector_adapter.last_write_succeeded:
+        raise RuntimeError('Sector refresh failed; do not accept an old file as a successful refresh.')
+    if not complete:
+        print(f'Partial fresh sector refresh: {sector_adapter.last_fetched_count}/{len(tickers)}; '
+              f'unresolved={sector_adapter.failed_tickers}. Missing rows remain in coverage diagnostics.')
     
     sector_path = Path("/opt/airflow/data/raw/sector/sector.parquet")
     if not sector_path.exists() or sector_path.stat().st_size == 0:

@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 import unittest
+from unittest.mock import Mock, patch
 from pathlib import Path
 
 HAS_AIRFLOW = os.name == 'posix' and importlib.util.find_spec('airflow') is not None
@@ -23,7 +24,7 @@ class AirflowContracts(unittest.TestCase):
 
     def test_gold_precedes_final_quality_gate(self):
         chain = ['dbt_run_bronze', 'dbt_run_silver', 'dbt_run_intermediate',
-                 'dbt_build_gold', 'dbt_test_quality_gates']
+                 'dbt_build_gold', 'dbt_test_quality_gates', 'audit_backtest_inputs']
         for i, task_id in enumerate(chain):
             self.assertEqual(self.transform.get_task(task_id).upstream_task_ids,
                              {chain[i-1]} if i else set())
@@ -31,8 +32,9 @@ class AirflowContracts(unittest.TestCase):
     def test_single_warehouse_pool_and_no_duplicate_var_option(self):
         for task in self.transform.tasks:
             self.assertEqual(task.pool, 'duckdb_access')
-            self.assertIn('--vars "$QUANT_DBT_VARS"', task.bash_command)
-            self.assertNotIn('--var ', task.bash_command)
+            if task.task_id.startswith('dbt_'):
+                self.assertIn('--vars "$QUANT_DBT_VARS"', task.bash_command)
+                self.assertNotIn('--var ', task.bash_command)
         self.assertEqual(self.transform.max_active_runs, 1)
         self.assertEqual(self.bag.get_dag('test_duckdb_connect').tasks[0].pool, 'duckdb_access')
 
@@ -60,6 +62,20 @@ class AirflowContracts(unittest.TestCase):
         self.assertIn('failed', trigger.failed_states)
         self.assertEqual(trigger.retries, 0)
         self.assertNotEqual(trigger.pool, 'duckdb_access')
+
+    def test_sector_task_accepts_partial_fresh_write_but_rejects_stale_file(self):
+        import polars as pl
+        task=self.ingest.get_task('fetch_gics_sector')
+        adapter=Mock();adapter.run.return_value=False
+        adapter.last_fetched_count=9;adapter.failed_tickers=['MISSING']
+        with patch('ingestion.adapters.sector.SectorAdapter',return_value=adapter), \
+             patch('polars.read_parquet',return_value=pl.DataFrame({'Ticker':['A']})), \
+             patch('pathlib.Path.exists',return_value=True), \
+             patch('pathlib.Path.stat',return_value=Mock(st_size=10)):
+            adapter.last_write_succeeded=False
+            with self.assertRaises(RuntimeError):task.python_callable()
+            adapter.last_write_succeeded=True
+            task.python_callable()
 
 
 if __name__ == '__main__':

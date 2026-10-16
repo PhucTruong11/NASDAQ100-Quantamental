@@ -2,7 +2,7 @@
 
 {#
     STAGING LAYER: Làm sạch và chuẩn hóa BCTC từ Bronze.
-    - Lọc scope: Chỉ giữ lại báo cáo năm (10-K) và báo cáo quý (10-Q), loại bỏ form sửa đổi/khác.
+    - Lọc scope: 10-K/10-Q và annual foreign forms 20-F/40-F; không tự đổi taxonomy/currency.
     - Chuẩn hóa tên cột: Chuyển sang snake_case chuẩn (period_start_date, available_date/filing_date).
     - Giữ nguyên số dòng (chưa deduplicate; việc dedup PIT được thực hiện ở tầng Silver).
 #}
@@ -18,4 +18,4 @@ SELECT
     period_end                   AS period_end_date,
     filing_date
 FROM {{ ref('bronze_company_facts') }}
-WHERE form IN ('10-K', '10-Q')
+WHERE form IN ('10-K', '10-Q', '20-F', '40-F')

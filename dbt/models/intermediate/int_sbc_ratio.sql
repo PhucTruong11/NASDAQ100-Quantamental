@@ -31,6 +31,7 @@ WITH sbc_components AS (
               'SalesRevenueNet'
           )
           AND f.available_date <= u.rebalance_date
+          AND DATE_DIFF('day', f.period_end_date, u.rebalance_date) BETWEEN 0 AND {{ var('max_annual_age_days', 550) | int }}
         ORDER BY 
             f.period_end_date DESC,
             CASE f.metric_tag

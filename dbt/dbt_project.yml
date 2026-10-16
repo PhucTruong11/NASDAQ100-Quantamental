@@ -4,6 +4,11 @@ config-version: 2
 
 profile: 'nasdaq_quantamental'
 
+vars:
+  max_annual_age_days: 550
+  max_shares_age_days: 400
+  max_quarter_age_days: 200
+
 flags:
   partial_parse: false
 

@@ -8,12 +8,17 @@
 - Growth ghép Net Income với Revenue theo cùng **start/end**. Doanh thu năm trước phải có cả start/end cách năm hiện tại 330–400 ngày và đã available tại rebalance; không nhảy qua năm thiếu dữ liệu.
 - SBC cũng ghép cùng kỳ Revenue. Earnings growth theo quý chỉ nhận USD.
 - NULL là thiếu dữ liệu, không phải 0. Z-score thiếu dispersion hoặc thiếu sector giữ NULL.
+- Current-period facts được lọc tuổi trước normalization: annual flows tối đa 550 ngày,
+  shares 400 ngày, current NI quarter 200 ngày (dbt vars). Không áp giới hạn tuổi current
+  period lên prior-year comparative. Xem [backtest data quality](backtest-data-quality.md).
+- Ingestion bổ sung DEI instant shares và US-GAAP facts trong 20-F/40-F; không tự map
+  IFRS, gross revenue, broader productive assets hay allocated SBC sang metrics cũ.
 
 ## FCF Yield
 
 - `FCF = OCF - abs(Capex)` với OCF/Capex cùng annual USD period. Thiếu Capex → FCF NULL; Capex được báo cáo bằng 0 → giữ 0.
 - Giá tính return (`adjusted_close_price`) được giữ. `nominal_close_price` khôi phục giá danh nghĩa bằng cách đảo các split **sau ngày giá**, vì Yahoo Close đã split-adjusted đến ngày tải dữ liệu. Không dùng giá điều chỉnh cổ tức để tính vốn hóa.
-- Shares dùng instant fact, unit `SHARES`, available trước rebalance. Nhân split factor giữa ngày đo shares và rebalance để shares và giá danh nghĩa cùng cơ sở.
+- Shares dùng instant CommonStockSharesOutstanding hoặc dei:EntityCommonStockSharesOutstanding, unit `SHARES`, available trước rebalance. Nhân split factor giữa ngày đo shares và rebalance để shares và giá danh nghĩa cùng cơ sở.
 - Khi cùng CIK có nhiều ticker trong universe tại kỳ đó (ví dụ GOOG/GOOGL), FCF Yield giữ NULL: issuer-level shares không đủ để định giá từng share class. Chưa hỗ trợ class-level market cap hoặc buyback/issuance chưa được công bố giữa hai kỳ báo cáo.
 
 ## Universe
@@ -23,6 +28,8 @@
 - `effective`: ngày hiệu lực đã xác minh từ nguồn lịch sử; được dùng mặc định.
 - `monthly_observation`: ảnh chụp archive, chỉ dùng khi chủ động bật `allow_observed_universe: true`.
 - `identifier_quality`: `current_mapping` là mapping từ universe hiện tại, chưa xác minh lịch sử ticker reuse; `unmapped` giữ CIK NULL. Không loại ticker khỏi membership chỉ vì thiếu CIK/giá/sector.
+- `sec_filing_crosscheck`: CIK được đối chiếu SEC trong window của registry
+  `config/historical_identifiers.csv`; không nâng membership thành effective history.
 
 Seed hiện có 40 ảnh chụp yfiua, 4.040 dòng từ **31/07/2023**. Mỗi ảnh dùng phiên bản commit công bố đầu tiên và chỉ available từ ngày kế tiếp; không backdate theo tên thư mục tháng. Nguồn là [yfiua/index-constituents](https://github.com/yfiua/index-constituents), giấy phép mã nguồn [Apache 2.0](https://github.com/yfiua/index-constituents/blob/main/LICENSE); các URL commit của từng ảnh được lưu trong seed.
 

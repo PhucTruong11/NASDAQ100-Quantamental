@@ -155,6 +155,46 @@ class FinancialSemantics(unittest.TestCase):
         with self.assertRaises(ValueError):
             write_history(rows, ROOT / 'must-not-be-written.csv')
 
+    def test_dei_instant_shares_fill_gaap_gap_without_future_leakage(self):
+        self.fact('NetCashProvidedByUsedInOperatingActivities',100)
+        self.fact('PaymentsToAcquirePropertyPlantAndEquipment',30)
+        self.fact('dei:EntityCommonStockSharesOutstanding',100,start=None,end='2025-01-01',unit='SHARES')
+        self.fact('dei:EntityCommonStockSharesOutstanding',1000,start=None,end='2025-01-25',filed='2025-02-01',unit='SHARES')
+        self.fundamentals(); self.build('int_fcf_yield')
+        row=self.con.execute('SELECT reported_shares_outstanding,shares_source_tag,fcf_yield_raw FROM int_fcf_yield').fetchone()
+        self.assertEqual(row[:2],(100.0,'dei:EntityCommonStockSharesOutstanding'))
+        self.assertAlmostEqual(row[2],0.07)
+
+    def test_broader_capex_is_not_silently_aliased_to_ppe(self):
+        self.fact('NetCashProvidedByUsedInOperatingActivities',100)
+        self.fact('PaymentsToAcquireProductiveAssets',30)
+        self.fundamentals(); self.build('int_fcf_yield')
+        self.assertEqual(self.con.execute('SELECT capex,free_cash_flow FROM int_fcf_yield').fetchone(),(None,None))
+
+    def test_stale_shares_cannot_influence_cross_section_normalization(self):
+        self.con.execute("INSERT INTO int_rebalance_universe VALUES ('2025-01-31','BBB','2','Tech'),('2025-01-31','CCC','3','Tech')")
+        self.con.execute("INSERT INTO silver_price_adjusted VALUES ('BBB','2025-01-31',10,10,0),('CCC','2025-01-31',10,10,0)")
+        for cik,shares,end in [('1',100,'2025-01-01'),('2',200,'2025-01-01'),('3',1,'2000-01-01')]:
+            for tag,value,start,finish,unit in [
+                ('NetCashProvidedByUsedInOperatingActivities',100,'2024-01-01','2024-12-31','USD'),
+                ('PaymentsToAcquirePropertyPlantAndEquipment',30,'2024-01-01','2024-12-31','USD'),
+                ('dei:EntityCommonStockSharesOutstanding',shares,None,end,'SHARES')]:
+                self.con.execute('INSERT INTO stg_fundamentals VALUES (?,?,?,?,?,?,?,?,?,?)',
+                    [cik,tag,value,unit,'10-K',2024,'FY',start,finish,'2025-01-15'])
+        self.fundamentals();self.build('int_fcf_yield')
+        self.assertIsNone(self.con.execute("SELECT fcf_yield_raw FROM int_fcf_yield WHERE ticker='CCC'").fetchone()[0])
+        self.assertAlmostEqual(self.con.execute("SELECT fcf_yield_zscore FROM int_fcf_yield WHERE ticker='AAA'").fetchone()[0],2**-0.5)
+
+    def test_stale_current_period_is_blocked_but_prior_year_comparison_is_allowed(self):
+        self.fact('Revenues',400,start='2023-01-01',end='2023-12-31',filed='2024-02-01')
+        self.fact('Revenues',300,start='2022-01-01',end='2022-12-31',filed='2023-02-01')
+        self.fact('NetIncomeLoss',100,start='2023-01-01',end='2023-12-31',filed='2024-02-01')
+        self.fundamentals();self.build('int_growth_ratio')
+        self.assertIsNotNone(self.con.execute('SELECT rule_of_40_raw FROM int_growth_ratio').fetchone()[0])
+        self.con.execute("UPDATE int_rebalance_universe SET rebalance_date='2026-01-31'")
+        self.con.execute('DROP TABLE int_growth_ratio');self.build('int_growth_ratio')
+        self.assertIsNone(self.con.execute('SELECT rule_of_40_raw FROM int_growth_ratio').fetchone()[0])
+
 
 if __name__ == '__main__':
     unittest.main()

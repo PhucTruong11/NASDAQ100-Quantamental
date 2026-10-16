@@ -4,7 +4,10 @@
 
 `Ingestion universe/sector → trigger transformation và đợi kết quả`
 
-`Bronze → seed/snapshot/Silver → Intermediate → Gold + coverage → quality gates toàn project`
+`Bronze → seed/snapshot/Silver → Intermediate → Gold + coverage → quality gates toàn project → backtest input audit`
+
+Audit dữ liệu và policy mẫu hiện tại được chốt trong [backtest-data-quality.md](backtest-data-quality.md).
+Task cuối xuất `is_research_signal_eligible` kèm tuổi input; có đủ 4 scores không tự đảm bảo input còn phù hợp.
 
 Transformation build đủ 5 bảng: Growth, Momentum, Value, Quality proxy, Composite.
 Gold giữ grain `(ticker, rebalance_date)`, giữ đủ grid, giữ NULL đúng nghĩa.
